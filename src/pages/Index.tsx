@@ -10,10 +10,10 @@ const Index = () => {
       {/* Header/Navbar */}
       <header className="border-b bg-white">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-1">
+          <Link to="/" className="flex items-center gap-1">
             <span className="text-2xl font-bold text-city-blue">City</span>
             <span className="text-2xl font-bold text-city-teal">Pulse</span>
-          </div>
+          </Link>
           <div className="flex gap-4">
             <Link to="/dashboard">
               <Button variant="ghost">Dashboard</Button>
@@ -21,7 +21,9 @@ const Index = () => {
             <Link to="/map">
               <Button variant="ghost">Map</Button>
             </Link>
-            <Button className="bg-city-blue hover:bg-blue-700">Get Started</Button>
+            <Link to="/dashboard">
+              <Button className="bg-city-blue hover:bg-blue-700">Get Started</Button>
+            </Link>
           </div>
         </div>
       </header>
