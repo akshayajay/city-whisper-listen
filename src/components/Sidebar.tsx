@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BarChart3, Map, PieChart, ListTodo, Users, TrendingUp, MessageSquare } from 'lucide-react';
+import { BarChart3, Map, PieChart, ListTodo, Users, TrendingUp, MessageSquare, Twitter, Facebook } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type SidebarItemProps = {
@@ -55,11 +55,32 @@ const Sidebar = () => {
               icon={<PieChart className="h-5 w-5" />} 
               label="Analytics" 
               path="/dashboard" 
+              active={false}
             />
             <SidebarItem 
               icon={<TrendingUp className="h-5 w-5" />} 
-              label="Trends" 
+              label="Sentiment Trends" 
               path="/dashboard" 
+              active={false}
+            />
+          </div>
+        </div>
+        <div className="py-4">
+          <h4 className="mb-4 px-2 text-sm font-medium uppercase tracking-wider text-gray-500">
+            Data Sources
+          </h4>
+          <div className="space-y-1">
+            <SidebarItem 
+              icon={<Twitter className="h-5 w-5 text-blue-500" />} 
+              label="Twitter Data" 
+              path="/dashboard" 
+              active={false}
+            />
+            <SidebarItem 
+              icon={<Facebook className="h-5 w-5 text-blue-600" />} 
+              label="Facebook Data" 
+              path="/dashboard" 
+              active={false}
             />
           </div>
         </div>
@@ -72,16 +93,19 @@ const Sidebar = () => {
               icon={<MessageSquare className="h-5 w-5" />} 
               label="Grievances" 
               path="/dashboard" 
+              active={false}
             />
             <SidebarItem 
               icon={<ListTodo className="h-5 w-5" />} 
               label="Tasks" 
               path="/dashboard" 
+              active={false}
             />
             <SidebarItem 
               icon={<Users className="h-5 w-5" />} 
               label="Users" 
               path="/dashboard" 
+              active={false}
             />
           </div>
         </div>

@@ -1,9 +1,8 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, MessageSquare, Search, Settings } from 'lucide-react';
+import { Bell, MessageSquare, Search, Settings, Twitter, Facebook } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import GrievanceForm from './GrievanceForm';
 
 const Navbar = () => {
   return (
@@ -13,6 +12,16 @@ const Navbar = () => {
           <span className="text-2xl font-bold text-city-blue">City</span>
           <span className="text-2xl font-bold text-city-teal">Pulse</span>
         </Link>
+        <div className="ml-4 flex items-center gap-1">
+          <div className="flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded-full">
+            <Twitter size={12} className="text-blue-500" />
+            <span className="text-gray-600">Connected</span>
+          </div>
+          <div className="flex items-center gap-1 text-xs bg-gray-100 px-2 py-1 rounded-full">
+            <Facebook size={12} className="text-blue-600" />
+            <span className="text-gray-600">Connected</span>
+          </div>
+        </div>
         <div className="ml-auto flex items-center gap-4">
           <div className="relative hidden md:block">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
@@ -34,7 +43,9 @@ const Navbar = () => {
             <Settings className="h-5 w-5" />
             <span className="sr-only">Settings</span>
           </Button>
-          <GrievanceForm />
+          <Link to="/dashboard">
+            <Button variant="default">View Dashboard</Button>
+          </Link>
         </div>
       </div>
     </header>
