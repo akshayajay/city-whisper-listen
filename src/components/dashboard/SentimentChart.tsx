@@ -10,7 +10,7 @@ const SentimentChart: React.FC = () => {
   return (
     <Card className="col-span-1">
       <CardHeader className="pb-2">
-        <CardTitle>Sentiment Analysis</CardTitle>
+        <CardTitle>Tamil Nadu Sentiment Analysis</CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
         <div className="h-[300px] w-full">

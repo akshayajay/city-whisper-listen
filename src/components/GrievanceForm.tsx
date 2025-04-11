@@ -15,6 +15,7 @@ const GrievanceForm: React.FC = () => {
     content: '',
     category: '',
     area: '',
+    district: '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -32,6 +33,13 @@ const GrievanceForm: React.FC = () => {
     }));
   };
 
+  const handleDistrictChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      district: value
+    }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -40,7 +48,7 @@ const GrievanceForm: React.FC = () => {
     
     toast({
       title: "Grievance Submitted",
-      description: "Your grievance has been submitted successfully.",
+      description: "Your grievance has been submitted to Tamil Nadu authorities.",
     });
     
     // Reset form and close dialog
@@ -48,6 +56,7 @@ const GrievanceForm: React.FC = () => {
       content: '',
       category: '',
       area: '',
+      district: '',
     });
     setOpen(false);
   };
@@ -59,7 +68,7 @@ const GrievanceForm: React.FC = () => {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Submit a New Grievance</DialogTitle>
+          <DialogTitle>Submit a New Grievance in Tamil Nadu</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           <div className="space-y-2">
@@ -91,6 +100,34 @@ const GrievanceForm: React.FC = () => {
                 <SelectItem value="noise">Noise</SelectItem>
                 <SelectItem value="safety">Safety</SelectItem>
                 <SelectItem value="transportation">Transportation</SelectItem>
+                <SelectItem value="water">Water Supply</SelectItem>
+                <SelectItem value="electricity">Electricity</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="district">District</Label>
+            <Select 
+              value={formData.district} 
+              onValueChange={handleDistrictChange}
+              required
+            >
+              <SelectTrigger id="district">
+                <SelectValue placeholder="Select district" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="chennai">Chennai</SelectItem>
+                <SelectItem value="coimbatore">Coimbatore</SelectItem>
+                <SelectItem value="madurai">Madurai</SelectItem>
+                <SelectItem value="trichy">Tiruchirappalli</SelectItem>
+                <SelectItem value="salem">Salem</SelectItem>
+                <SelectItem value="tirunelveli">Tirunelveli</SelectItem>
+                <SelectItem value="vellore">Vellore</SelectItem>
+                <SelectItem value="thanjavur">Thanjavur</SelectItem>
+                <SelectItem value="kanchipuram">Kanchipuram</SelectItem>
+                <SelectItem value="erode">Erode</SelectItem>
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
@@ -101,7 +138,7 @@ const GrievanceForm: React.FC = () => {
             <Input
               id="area"
               name="area"
-              placeholder="Enter the area or neighborhood"
+              placeholder="Enter the specific area or neighborhood"
               value={formData.area}
               onChange={handleChange}
               required
