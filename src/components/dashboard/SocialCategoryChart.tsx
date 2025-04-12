@@ -2,7 +2,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { getSocialMediaCategories, categoryColors } from '@/data/socialMediaData';
+import { getSocialMediaCategories } from '@/data/socialMediaData';
+import { categoryColors } from '@/data/mockData';
 
 const SocialCategoryChart: React.FC = () => {
   const data = getSocialMediaCategories();

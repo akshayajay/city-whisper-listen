@@ -87,7 +87,7 @@ export const mockSocialMediaPosts = [
   {
     id: 10,
     platform: 'Facebook',
-    content: 'The streetlights in my neighborhood haven't been working for weeks now. Feeling unsafe at night.',
+    content: 'The streetlights in my neighborhood haven\'t been working for weeks now. Feeling unsafe at night.',
     timestamp: new Date(2025, 3, 1).getTime(),
     location: 'Chennai',
     sentiment: 'negative',
@@ -96,7 +96,7 @@ export const mockSocialMediaPosts = [
   {
     id: 11,
     platform: 'Twitter',
-    content: 'Hospital wait times are outrageous in Chennai GH. Waited 4 hours and still haven't seen a doctor.',
+    content: 'Hospital wait times are outrageous in Chennai GH. Waited 4 hours and still haven\'t seen a doctor.',
     timestamp: new Date(2025, 2, 30).getTime(),
     location: 'Chennai',
     sentiment: 'negative',
@@ -194,4 +194,3 @@ export const sentimentTrendColors = {
   neutral: '#facc15', // yellow
   negative: '#f87171', // red
 };
-
