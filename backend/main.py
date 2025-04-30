@@ -51,41 +51,78 @@ class SocialMediaPost(BaseModel):
 async def startup_event():
     # Start the social media stream processing in the background
     asyncio.create_task(process_social_media_stream())
+    # Start the hourly trend aggregation task
+    asyncio.create_task(aggregate_trends_hourly())
 
 async def process_social_media_stream():
     """Process social media streams and send updates to clients"""
     while True:
-        # Fetch new posts from Twitter and Facebook
-        twitter_posts = await twitter_client.fetch_recent_posts()
-        facebook_posts = await facebook_client.fetch_recent_posts()
+        # Get the current timestamp for tracking
+        current_time = datetime.now()
+        print(f"[{current_time}] Starting social media data collection...")
         
-        # Process all posts
-        all_posts = twitter_posts + facebook_posts
-        processed_posts = []
+        try:
+            # Fetch new posts from Twitter and Facebook
+            twitter_posts = await twitter_client.fetch_recent_posts()
+            facebook_posts = await facebook_client.fetch_recent_posts()
+            
+            # Process all posts
+            all_posts = twitter_posts + facebook_posts
+            processed_posts = []
+            
+            for post in all_posts:
+                # Analyze sentiment
+                sentiment = sentiment_analyzer.analyze(post['content'])
+                
+                # Classify category
+                category = category_classifier.classify(post['content'])
+                
+                # Add results to post
+                post['sentiment'] = sentiment
+                post['category'] = category
+                
+                # Store in database
+                await db_manager.store_post(post)
+                
+                processed_posts.append(post)
+            
+            # Send updates to all connected clients
+            if processed_posts and connected_clients:
+                for client in connected_clients:
+                    try:
+                        await client.send_json(processed_posts)
+                    except Exception as e:
+                        print(f"Error sending to client: {e}")
+                        
+            print(f"[{current_time}] Processed {len(processed_posts)} social media posts")
+        except Exception as e:
+            print(f"Error in social media processing: {e}")
         
-        for post in all_posts:
-            # Analyze sentiment
-            sentiment = sentiment_analyzer.analyze(post['content'])
-            
-            # Classify category
-            category = category_classifier.classify(post['content'])
-            
-            # Add results to post
-            post['sentiment'] = sentiment
-            post['category'] = category
-            
-            # Store in database
-            await db_manager.store_post(post)
-            
-            processed_posts.append(post)
+        # Wait for an hour before next fetch (3600 seconds)
+        await asyncio.sleep(3600)
+
+async def aggregate_trends_hourly():
+    """Aggregate trend data hourly and store it"""
+    while True:
+        current_time = datetime.now()
+        start_time = current_time - timedelta(hours=1)
         
-        # Send updates to all connected clients
-        if processed_posts and connected_clients:
-            for client in connected_clients:
-                await client.send_json(processed_posts)
+        try:
+            print(f"[{current_time}] Aggregating trend data for the past hour...")
+            
+            # Aggregate sentiment counts
+            await db_manager.aggregate_hourly_trends(start_time, current_time)
+            
+            print(f"[{current_time}] Trend aggregation completed")
+        except Exception as e:
+            print(f"Error in trend aggregation: {e}")
         
-        # Wait before next fetch
-        await asyncio.sleep(60)  # Check every minute
+        # Calculate time until the next hour
+        next_hour = current_time.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+        wait_seconds = (next_hour - current_time).total_seconds()
+        
+        # Wait until the next hour
+        await asyncio.sleep(wait_seconds)
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -124,6 +161,29 @@ async def get_trend_data(days: int = 7):
     start_date = today - timedelta(days=days)
     
     trend_data = await db_manager.get_sentiment_trends(start_date, today)
+    return trend_data
+
+@app.get("/historical-trends")
+async def get_historical_trends(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    interval: str = "daily"
+):
+    """Get historical trend data with specified interval
+    
+    Intervals: hourly, daily, weekly, monthly
+    """
+    # Parse dates or use defaults
+    end = datetime.now()
+    if end_date:
+        end = datetime.fromisoformat(end_date)
+    
+    # Default to last 7 days if no start date
+    start = end - timedelta(days=7)
+    if start_date:
+        start = datetime.fromisoformat(start_date)
+    
+    trend_data = await db_manager.get_historical_trends(start, end, interval)
     return trend_data
 
 @app.get("/category-data")

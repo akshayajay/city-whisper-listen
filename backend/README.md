@@ -5,11 +5,12 @@ This directory contains the backend service for the Tamil Nadu CityPulse applica
 
 ## Features
 
-- Real-time social media data collection from Twitter and Facebook
+- Hourly social media data collection from Twitter and Facebook
 - Sentiment analysis of posts using machine learning
 - Categorization of posts into predefined categories
+- Trend storage and aggregation for historical data analysis
 - Storing processed data in a database
-- Providing API endpoints for the frontend
+- Providing API endpoints for the frontend with historical trend analysis
 
 ## Setup
 
@@ -47,11 +48,41 @@ This directory contains the backend service for the Tamil Nadu CityPulse applica
 ## API Endpoints
 
 - `GET /posts` - Get social media posts with optional filters
-- `GET /trend-data` - Get sentiment trend data
+- `GET /trend-data` - Get sentiment trend data for specified number of days
+- `GET /historical-trends` - Get historical trend data with customizable intervals
 - `GET /category-data` - Get post counts by category
 - `GET /platform-data` - Get post counts by platform
 - `WebSocket /ws` - Real-time updates on new posts
 
+### Trend Data API
+
+The trend data API supports the following parameters:
+
+- `GET /historical-trends?interval=daily&start_date=2023-04-01&end_date=2023-04-30`
+
+Available intervals:
+- hourly - Data aggregated by hour
+- daily - Data aggregated by day
+- weekly - Data aggregated by week
+- monthly - Data aggregated by month
+
+## Data Collection
+
+The system collects social media data hourly and processes it through the following pipeline:
+
+1. Data collection from Twitter and Facebook APIs
+2. Text preprocessing and cleaning
+3. Sentiment analysis using machine learning
+4. Category classification
+5. Storage in SQLite database
+6. Trend aggregation and historical data storage
+
 ## Development
 
 For development without actual social media API keys, the system will use mock data. To use real data, obtain API credentials and update the `.env` file.
+
+## Trend Storage
+
+The system stores trend data in dedicated database tables:
+- `trend_data`: Aggregated sentiment counts by time interval
+- `category_trends`: Aggregated category counts by time interval

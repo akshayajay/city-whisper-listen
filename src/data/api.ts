@@ -63,6 +63,39 @@ export async function fetchSentimentTrendData(days: number = 7) {
 }
 
 /**
+ * Fetch historical trend data with specified interval
+ * @param options Configuration options for historical trends
+ * @returns Array of trend data points
+ */
+export async function fetchHistoricalTrends(options: {
+  startDate?: string;
+  endDate?: string;
+  interval?: 'hourly' | 'daily' | 'weekly' | 'monthly';
+} = {}) {
+  try {
+    // Build query string
+    const params = new URLSearchParams();
+    if (options.startDate) params.append('start_date', options.startDate);
+    if (options.endDate) params.append('end_date', options.endDate);
+    if (options.interval) params.append('interval', options.interval);
+    
+    const response = await fetch(`${API_BASE_URL}/historical-trends?${params.toString()}`);
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching historical trends:', error);
+    // If API fails, use mock data function
+    const { getSentimentTrendData } = await import('./socialMediaData');
+    return getSentimentTrendData();
+  }
+}
+
+/**
  * Fetch category data from the backend API
  * @returns Array of category data points
  */
