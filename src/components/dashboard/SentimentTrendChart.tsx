@@ -1,11 +1,47 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { getSentimentTrendData, sentimentTrendColors } from '@/data/socialMediaData';
+import { sentimentTrendColors } from '@/data/socialMediaData';
+import { fetchSentimentTrendData } from '@/data/api';
+import { useQuery } from '@tanstack/react-query';
 
 const SentimentTrendChart: React.FC = () => {
-  const data = getSentimentTrendData();
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['sentimentTrend'],
+    queryFn: () => fetchSentimentTrendData(7),
+    refetchInterval: 60000, // Refetch every minute
+  });
+
+  if (isLoading) {
+    return (
+      <Card className="col-span-full">
+        <CardHeader className="pb-2">
+          <CardTitle>Tamil Nadu Social Sentiment Trends</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="h-[300px] w-full flex items-center justify-center">
+            <p className="text-gray-500">Loading sentiment data...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <Card className="col-span-full">
+        <CardHeader className="pb-2">
+          <CardTitle>Tamil Nadu Social Sentiment Trends</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="h-[300px] w-full flex items-center justify-center">
+            <p className="text-red-500">Error loading sentiment data</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="col-span-full">

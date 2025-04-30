@@ -1,17 +1,31 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useQuery } from '@tanstack/react-query';
+import { fetchPlatformData } from '@/data/api';
 import { mockSocialMediaPosts } from '@/data/socialMediaData';
 
 const SocialMediaSources: React.FC = () => {
-  // Count posts by platform
-  const twitterCount = mockSocialMediaPosts.filter(post => post.platform === 'Twitter').length;
-  const facebookCount = mockSocialMediaPosts.filter(post => post.platform === 'Facebook').length;
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['platformData'],
+    queryFn: fetchPlatformData,
+    refetchInterval: 60000, // Refetch every minute
+  });
+  
+  // If we're loading or have an error, calculate from mock data
+  const twitterCount = data 
+    ? data.find((item: any) => item.platform === 'Twitter')?.count || 0
+    : mockSocialMediaPosts.filter(post => post.platform === 'Twitter').length;
+    
+  const facebookCount = data
+    ? data.find((item: any) => item.platform === 'Facebook')?.count || 0
+    : mockSocialMediaPosts.filter(post => post.platform === 'Facebook').length;
   
   return (
     <Card className="col-span-1">
       <CardHeader className="pb-2">
         <CardTitle>Social Media Sources</CardTitle>
+        {isLoading && <p className="text-xs text-gray-500">Refreshing data...</p>}
       </CardHeader>
       <CardContent className="pt-0">
         <div className="grid grid-cols-2 gap-4">
