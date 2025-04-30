@@ -22,7 +22,9 @@ const SentimentTrendChart: React.FC = () => {
               <Tooltip 
                 formatter={(value, name) => [
                   `${value} posts`, 
-                  name.charAt(0).toUpperCase() + name.slice(1)
+                  typeof name === 'string' 
+                    ? name.charAt(0).toUpperCase() + name.slice(1)
+                    : name
                 ]}
               />
               <Legend />
