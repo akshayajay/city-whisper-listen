@@ -1,4 +1,3 @@
-
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,12 +7,17 @@ import asyncio
 import json
 from datetime import datetime, timedelta
 
+# Mapping & Geocoding
+from geopy.geocoders import Nominatim
+import folium
+from folium.plugins import HeatMap
+
 # Import our custom modules
 from social_media.twitter_client import TwitterClient
 from social_media.facebook_client import FacebookClient
 from ml.sentiment_analyzer import SentimentAnalyzer
 from ml.category_classifier import CategoryClassifier
-from db.database import DatabaseManager
+from db.database import DatabaseManager, SocialMediaPostRecord
 
 app = FastAPI(title="TamilNadu CityPulse API")
 
@@ -36,7 +40,10 @@ twitter_client = TwitterClient()
 facebook_client = FacebookClient()
 
 # Connected WebSocket clients
-connected_clients = []
+connected_clients: List[WebSocket] = []
+
+# Geolocator for mapping
+geolocator = Nominatim(user_agent="tn-citypulse-geocoder")
 
 class SocialMediaPost(BaseModel):
     id: str
@@ -44,6 +51,8 @@ class SocialMediaPost(BaseModel):
     content: str
     timestamp: str
     location: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     sentiment: Optional[str] = None
     category: Optional[str] = None
 
@@ -57,48 +66,52 @@ async def startup_event():
 async def process_social_media_stream():
     """Process social media streams and send updates to clients"""
     while True:
-        # Get the current timestamp for tracking
         current_time = datetime.now()
         print(f"[{current_time}] Starting social media data collection...")
-        
         try:
-            # Fetch new posts from Twitter and Facebook
+            # Fetch new posts
             twitter_posts = await twitter_client.fetch_recent_posts()
             facebook_posts = await facebook_client.fetch_recent_posts()
-            
-            # Process all posts
             all_posts = twitter_posts + facebook_posts
             processed_posts = []
-            
+
             for post in all_posts:
-                # Analyze sentiment
+                # Sentiment and category
                 sentiment = sentiment_analyzer.analyze(post['content'])
-                
-                # Classify category
                 category = category_classifier.classify(post['content'])
-                
-                # Add results to post
                 post['sentiment'] = sentiment
                 post['category'] = category
-                
-                # Store in database
-                await db_manager.store_post(post)
-                
+
+                # Geocode if location present
+                lat, lon = None, None
+                if post.get('location'):
+                    try:
+                        loc = geolocator.geocode(f"{post['location']}, Tamil Nadu")
+                        if loc:
+                            lat, lon = loc.latitude, loc.longitude
+                    except Exception:
+                        pass
+                post['latitude'] = lat
+                post['longitude'] = lon
+
+                # Store enriched post
+                await db_manager.store_post(**post)
                 processed_posts.append(post)
-            
-            # Send updates to all connected clients
+
+            # Broadcast to WebSocket clients
             if processed_posts and connected_clients:
-                for client in connected_clients:
+                for client in list(connected_clients):
                     try:
                         await client.send_json(processed_posts)
                     except Exception as e:
                         print(f"Error sending to client: {e}")
-                        
-            print(f"[{current_time}] Processed {len(processed_posts)} social media posts")
+                        connected_clients.remove(client)
+
+            print(f"[{current_time}] Processed {len(processed_posts)} posts")
         except Exception as e:
             print(f"Error in social media processing: {e}")
-        
-        # Wait for an hour before next fetch (3600 seconds)
+
+        # Sleep one hour
         await asyncio.sleep(3600)
 
 async def aggregate_trends_hourly():
@@ -106,22 +119,17 @@ async def aggregate_trends_hourly():
     while True:
         current_time = datetime.now()
         start_time = current_time - timedelta(hours=1)
-        
         try:
-            print(f"[{current_time}] Aggregating trend data for the past hour...")
-            
-            # Aggregate sentiment counts
+            print(f"[{current_time}] Aggregating trend data...")
             await db_manager.aggregate_hourly_trends(start_time, current_time)
-            
-            print(f"[{current_time}] Trend aggregation completed")
+            print(f"[{current_time}] Aggregation complete")
         except Exception as e:
             print(f"Error in trend aggregation: {e}")
-        
-        # Calculate time until the next hour
-        next_hour = current_time.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+
+        # Wait until next hour
+        next_hour = (current_time.replace(minute=0, second=0, microsecond=0)
+                     + timedelta(hours=1))
         wait_seconds = (next_hour - current_time).total_seconds()
-        
-        # Wait until the next hour
         await asyncio.sleep(wait_seconds)
 
 @app.websocket("/ws")
@@ -130,7 +138,6 @@ async def websocket_endpoint(websocket: WebSocket):
     connected_clients.append(websocket)
     try:
         while True:
-            # Keep connection alive
             await websocket.receive_text()
     except WebSocketDisconnect:
         connected_clients.remove(websocket)
@@ -142,25 +149,21 @@ async def get_posts(
     category: Optional[str] = None,
     sentiment: Optional[str] = None
 ):
-    """Get social media posts with optional filters"""
-    filters = {}
+    filters: Dict[str, Any] = {}
     if platform:
         filters["platform"] = platform
     if category:
         filters["category"] = category
     if sentiment:
         filters["sentiment"] = sentiment
-        
-    posts = await db_manager.get_posts(limit=limit, filters=filters)
-    return posts
+    records: List[SocialMediaPostRecord] = await db_manager.get_posts(limit=limit, filters=filters)
+    return [SocialMediaPost(**r.dict()) for r in records]
 
 @app.get("/trend-data")
 async def get_trend_data(days: int = 7):
-    """Get sentiment trend data for the specified number of days"""
-    today = datetime.now()
-    start_date = today - timedelta(days=days)
-    
-    trend_data = await db_manager.get_sentiment_trends(start_date, today)
+    end = datetime.now()
+    start = end - timedelta(days=days)
+    trend_data = await db_manager.get_sentiment_trends(start, end)
     return trend_data
 
 @app.get("/historical-trends")
@@ -169,34 +172,29 @@ async def get_historical_trends(
     end_date: Optional[str] = None,
     interval: str = "daily"
 ):
-    """Get historical trend data with specified interval
-    
-    Intervals: hourly, daily, weekly, monthly
-    """
-    # Parse dates or use defaults
-    end = datetime.now()
-    if end_date:
-        end = datetime.fromisoformat(end_date)
-    
-    # Default to last 7 days if no start date
-    start = end - timedelta(days=7)
-    if start_date:
-        start = datetime.fromisoformat(start_date)
-    
-    trend_data = await db_manager.get_historical_trends(start, end, interval)
-    return trend_data
+    end = datetime.now() if not end_date else datetime.fromisoformat(end_date)
+    start = (end - timedelta(days=7)) if not start_date else datetime.fromisoformat(start_date)
+    return await db_manager.get_historical_trends(start, end, interval)
 
 @app.get("/category-data")
 async def get_category_data():
-    """Get post counts by category"""
-    category_data = await db_manager.get_category_counts()
-    return category_data
+    return await db_manager.get_category_counts()
 
 @app.get("/platform-data")
 async def get_platform_data():
-    """Get post counts by platform"""
-    platform_data = await db_manager.get_platform_counts()
-    return platform_data
+    return await db_manager.get_platform_counts()
+
+@app.get("/heatmap")
+async def get_heatmap():
+    """Generate and return the latest Tamil Nadu grievance heatmap"""
+    # Fetch all geocoded posts
+    records: List[SocialMediaPostRecord] = await db_manager.get_posts(limit=None, filters={})
+    heat_data = [[r.latitude, r.longitude] for r in records if r.latitude and r.longitude]
+    map_tn = folium.Map(location=[11.1271, 78.6569], zoom_start=7)
+    HeatMap(heat_data, radius=15, blur=10, min_opacity=0.2).add_to(map_tn)
+    file_path = "static/tamil_nadu_grievances_heatmap.html"
+    map_tn.save(file_path)
+    return {"heatmap_file": file_path}
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
