@@ -80,6 +80,12 @@ class SocialMediaPost(BaseModel):
     sentiment: Optional[str] = None
     category: Optional[str] = None
 
+class GrievanceSubmission(BaseModel):
+    content: str
+    category: str
+    area: str
+    district: str
+
 @app.on_event("startup")
 async def startup_event():
     await seed_demo_data()
@@ -223,6 +229,35 @@ async def get_posts(
         filters['sentiment'] = sentiment
     recs = await db_manager.get_posts(limit=limit, filters=filters)
     return [SocialMediaPost(**r) for r in recs]
+
+@app.post("/grievances", response_model=SocialMediaPost)
+async def submit_grievance(grievance: GrievanceSubmission):
+    now = datetime.now()
+    location = grievance.district.title()
+    lat, lon = LOCATION_COORDS.get(location, LOCATION_COORDS["Tamil Nadu"])
+    record = {
+        "id": f"portal-{int(now.timestamp())}",
+        "platform": "Citizen Portal",
+        "content": grievance.content,
+        "timestamp": now.isoformat(),
+        "location": grievance.area or location,
+        "latitude": lat,
+        "longitude": lon,
+        "sentiment": sentiment_analyzer.analyze(grievance.content),
+        "category": grievance.category,
+    }
+
+    await db_manager.store_post(record)
+    hour_start = now.replace(minute=0, second=0, microsecond=0)
+    await db_manager.aggregate_hourly_trends(hour_start, datetime.now())
+
+    for ws in list(connected_clients):
+        try:
+            await ws.send_json([record])
+        except:
+            connected_clients.remove(ws)
+
+    return SocialMediaPost(**record)
 
 @app.get("/trend-data")
 async def get_trend_data(days: int = 7):

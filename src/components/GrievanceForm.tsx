@@ -1,16 +1,18 @@
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { submitGrievance } from '@/data/api';
 
 const GrievanceForm: React.FC = () => {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     content: '',
     category: '',
@@ -40,32 +42,42 @@ const GrievanceForm: React.FC = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
-    // In a real application, we would submit this data to an API
-    console.log('Submitting grievance:', formData);
-    
-    toast({
-      title: "Grievance Submitted",
-      description: "Your grievance has been submitted to Tamil Nadu authorities.",
-    });
-    
-    // Reset form and close dialog
-    setFormData({
-      content: '',
-      category: '',
-      area: '',
-      district: '',
-    });
-    setOpen(false);
+    try {
+      await submitGrievance(formData);
+
+      toast({
+        title: "Grievance Submitted",
+        description: "Your grievance was stored and sent to the live dashboard.",
+      });
+
+      setFormData({
+        content: '',
+        category: '',
+        area: '',
+        district: '',
+      });
+      setOpen(false);
+    } catch (error) {
+      console.error('Error submitting grievance:', error);
+      toast({
+        title: "Submission Failed",
+        description: "The backend could not save this grievance. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="bg-city-blue hover:bg-blue-700">Submit Grievance</Button>
-      </DialogTrigger>
+      <Button className="bg-city-blue hover:bg-blue-700" onClick={() => setOpen(true)}>
+        Submit Grievance
+      </Button>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Submit a New Grievance in Tamil Nadu</DialogTitle>
@@ -149,8 +161,8 @@ const GrievanceForm: React.FC = () => {
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-city-teal hover:bg-teal-700">
-              Submit
+            <Button type="submit" className="bg-city-teal hover:bg-teal-700" disabled={isSubmitting}>
+              {isSubmitting ? 'Submitting...' : 'Submit'}
             </Button>
           </div>
         </form>

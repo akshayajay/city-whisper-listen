@@ -18,7 +18,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {children}
         </div>
       </div>
-      <div className="fixed bottom-6 right-6 z-20">
+      <div className="fixed bottom-6 left-6 z-20">
         <GrievanceForm />
       </div>
     </div>

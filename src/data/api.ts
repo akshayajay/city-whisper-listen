@@ -27,6 +27,13 @@ export interface IngestionStatus {
   twitter_configured: boolean;
 }
 
+export interface GrievanceSubmission {
+  content: string;
+  category: string;
+  area: string;
+  district: string;
+}
+
 /**
  * Fetch social media posts from the backend API
  * @param options Options for filtering posts
@@ -173,6 +180,22 @@ export async function fetchIngestionStatus(): Promise<IngestionStatus | null> {
     console.error('Error fetching ingestion status:', error);
     return null;
   }
+}
+
+export async function submitGrievance(grievance: GrievanceSubmission): Promise<SocialMediaPost> {
+  const response = await fetch(`${API_BASE_URL}/grievances`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(grievance),
+  });
+
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+
+  return await response.json();
 }
 
 /**
