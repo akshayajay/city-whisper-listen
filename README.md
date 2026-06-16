@@ -73,6 +73,39 @@ Create a `.env` file in the frontend directory with:
 VITE_API_URL=http://localhost:8000
 ```
 
+The backend also supports a `.env` file:
+```
+USE_MOCK_ML=true
+ENABLE_BACKGROUND_JOBS=true
+```
+
+`USE_MOCK_ML=true` is the recommended default for deployment. It keeps the API fast and lightweight while still serving functional demo data. To use the transformer model in production, install `transformers` and `torch`, set `USE_MOCK_ML=false`, and provision a host with enough memory for the model.
+
+## Deployment
+
+### Render full-stack deployment
+This repository includes `render.yaml` for a two-service Render deploy:
+
+- `citypulse-api`: FastAPI backend from `backend/`
+- `citypulse-dashboard`: static Vite dashboard from `dist/`
+
+Steps:
+
+1. Push the repository to GitHub.
+2. In Render, create a new Blueprint from the repository.
+3. After the API service is created, confirm the frontend `VITE_API_URL` environment variable matches the API service URL.
+4. Trigger a redeploy of the dashboard if you changed `VITE_API_URL`.
+
+### Static-only dashboard
+The dashboard can also be deployed to Vercel or Netlify. It remains usable without a backend because the frontend falls back to bundled demo data when API requests fail.
+
+For a connected deployment, set:
+```
+VITE_API_URL=https://your-api-host.example.com
+```
+
+Vercel uses `vercel.json` for client-side routing. Netlify uses `netlify.toml` for the build command and SPA redirect.
+
 ## Status
 
 This is a demonstration project showing how citizen feedback and social media data with machine learning can be leveraged to improve urban governance in Tamil Nadu.

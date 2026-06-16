@@ -1,15 +1,16 @@
 
 import os
-from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
-import torch
 
 class SentimentAnalyzer:
     def __init__(self):
         # Check if we should use mock data (for development without GPU)
-        self.use_mock_data = os.getenv("USE_MOCK_ML", "false").lower() == "true"
+        self.use_mock_data = os.getenv("USE_MOCK_ML", "true").lower() == "true"
         
         if not self.use_mock_data:
             try:
+                from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
+                import torch
+
                 # Load multilingual sentiment analysis model (supports Tamil and English)
                 model_name = "nlptown/bert-base-multilingual-uncased-sentiment"
                 

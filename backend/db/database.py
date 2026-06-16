@@ -30,10 +30,19 @@ class DatabaseManager:
             content TEXT NOT NULL,
             timestamp TEXT NOT NULL,
             location TEXT,
+            latitude REAL,
+            longitude REAL,
             sentiment TEXT,
             category TEXT
         )
         ''')
+
+        cursor.execute("PRAGMA table_info(posts)")
+        existing_columns = {row[1] for row in cursor.fetchall()}
+        if "latitude" not in existing_columns:
+            cursor.execute("ALTER TABLE posts ADD COLUMN latitude REAL")
+        if "longitude" not in existing_columns:
+            cursor.execute("ALTER TABLE posts ADD COLUMN longitude REAL")
         
         # Create trend_data table for storing aggregated trends
         cursor.execute('''
@@ -81,13 +90,19 @@ class DatabaseManager:
                 
                 # Insert post
                 cursor.execute(
-                    "INSERT INTO posts (id, platform, content, timestamp, location, sentiment, category) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    """
+                    INSERT INTO posts (
+                        id, platform, content, timestamp, location, latitude, longitude, sentiment, category
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
                     (
                         post['id'], 
                         post['platform'], 
                         post['content'],
                         post['timestamp'],
                         post.get('location'),
+                        post.get('latitude'),
+                        post.get('longitude'),
                         post.get('sentiment'),
                         post.get('category')
                     )
@@ -208,8 +223,10 @@ class DatabaseManager:
                         query += " WHERE " + " AND ".join(conditions)
                 
                 # Add limit and order by most recent
-                query += " ORDER BY timestamp DESC LIMIT ?"
-                params.append(limit)
+                query += " ORDER BY timestamp DESC"
+                if limit is not None:
+                    query += " LIMIT ?"
+                    params.append(limit)
                 
                 cursor.execute(query, params)
                 rows = cursor.fetchall()
