@@ -34,6 +34,14 @@ export interface GrievanceSubmission {
   district: string;
 }
 
+export interface DashboardSummary {
+  total_signals: number;
+  citizen_reports: number;
+  social_posts: number;
+  negative_signals: number;
+  recent_ingested: number;
+}
+
 /**
  * Fetch social media posts from the backend API
  * @param options Options for filtering posts
@@ -163,6 +171,40 @@ export async function fetchPlatformData() {
   } catch (error) {
     console.error('Error fetching platform data:', error);
     // Return null and let component handle fallback
+    return null;
+  }
+}
+
+export async function fetchSentimentData() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/sentiment-data`);
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching sentiment data:', error);
+    return [
+      { name: 'positive', value: 0 },
+      { name: 'neutral', value: 0 },
+      { name: 'negative', value: 0 },
+    ];
+  }
+}
+
+export async function fetchDashboardSummary(): Promise<DashboardSummary | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/dashboard-summary`);
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching dashboard summary:', error);
     return null;
   }
 }

@@ -18,8 +18,7 @@ import SentimentTrendChart from '@/components/dashboard/SentimentTrendChart';
 import SocialMediaSources from '@/components/dashboard/SocialMediaSources';
 import SocialCategoryChart from '@/components/dashboard/SocialCategoryChart';
 import LiveUpdates from '@/components/dashboard/LiveUpdates';
-import { mockGrievances } from '@/data/mockData';
-import { fetchIngestionStatus, fetchSocialMediaPosts, SocialMediaPost } from '@/data/api';
+import { fetchDashboardSummary, fetchIngestionStatus, fetchSocialMediaPosts, SocialMediaPost } from '@/data/api';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -38,12 +37,13 @@ const Dashboard: React.FC = () => {
     queryFn: fetchIngestionStatus,
     refetchInterval: 5000,
   });
+
+  const { data: summary } = useQuery({
+    queryKey: ['dashboardSummary'],
+    queryFn: fetchDashboardSummary,
+    refetchInterval: 5000,
+  });
   
-  // Calculate stats from data
-  const totalGrievances = mockGrievances.length;
-  const resolvedCount = 3; // This would come from real data
-  const pendingCount = totalGrievances - resolvedCount;
-  const trendingCount = mockGrievances.filter(g => g.upvotes > 20).length;
   const socialMediaCount = socialMediaPosts?.length || 0;
   const liveMode = ingestionStatus?.running
     ? `${ingestionStatus.mode === 'twitter' ? 'Twitter' : 'Demo'} live`
@@ -59,6 +59,8 @@ const Dashboard: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['sentimentTrend'] });
     queryClient.invalidateQueries({ queryKey: ['socialCategories'] });
     queryClient.invalidateQueries({ queryKey: ['platformData'] });
+    queryClient.invalidateQueries({ queryKey: ['sentimentBreakdown'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
     queryClient.invalidateQueries({ queryKey: ['ingestionStatus'] });
   }, [queryClient]);
   
@@ -69,6 +71,8 @@ const Dashboard: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['sentimentTrend'] });
     queryClient.invalidateQueries({ queryKey: ['socialCategories'] });
     queryClient.invalidateQueries({ queryKey: ['platformData'] });
+    queryClient.invalidateQueries({ queryKey: ['sentimentBreakdown'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
     queryClient.invalidateQueries({ queryKey: ['ingestionStatus'] });
   };
   
@@ -93,40 +97,40 @@ const Dashboard: React.FC = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <StatCard
-          title="Total Grievances"
-          value={totalGrievances}
+          title="Total Signals"
+          value={summary?.total_signals ?? socialMediaCount}
           icon={<MessageSquare className="h-5 w-5" />}
-          trend={{ value: 12, isUpward: true }}
+          trend={undefined}
         />
         <StatCard
-          title="Pending Resolution"
-          value={pendingCount}
+          title="Citizen Reports"
+          value={summary?.citizen_reports ?? 0}
           icon={<BarChart3 className="h-5 w-5" />}
-          trend={{ value: 5, isUpward: true }}
+          trend={undefined}
         />
         <StatCard
-          title="Resolved Issues"
-          value={resolvedCount}
+          title="Social Posts"
+          value={summary?.social_posts ?? socialMediaCount}
           icon={<Map className="h-5 w-5" />}
-          trend={{ value: 8, isUpward: true }}
+          trend={undefined}
         />
         <StatCard
-          title="Trending Issues"
-          value={trendingCount}
+          title="Negative Signals"
+          value={summary?.negative_signals ?? 0}
           icon={<TrendingUp className="h-5 w-5" />}
-          trend={{ value: 14, isUpward: true }}
+          trend={undefined}
         />
         <StatCard
-          title="Social Media Data"
+          title="Recent Feed"
           value={isLoading ? '...' : socialMediaCount}
           icon={<MessageSquare className="h-5 w-5" />}
-          trend={isLoading ? undefined : { value: 23, isUpward: true }}
+          trend={undefined}
         />
         <StatCard
           title="Live Pipeline"
           value={liveMode}
           icon={<Radio className="h-5 w-5" />}
-          trend={ingestionStatus?.last_post_count ? { value: ingestionStatus.last_post_count, isUpward: true } : undefined}
+          trend={undefined}
         />
       </div>
       

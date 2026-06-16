@@ -283,6 +283,38 @@ async def get_category_data():
 async def get_platform_data():
     return await db_manager.get_platform_counts()
 
+@app.get("/sentiment-data")
+async def get_sentiment_data():
+    posts = await db_manager.get_posts(limit=None, filters={})
+    counts = {"positive": 0, "neutral": 0, "negative": 0}
+    for post in posts:
+        sentiment = post.get("sentiment") or "neutral"
+        if sentiment in counts:
+            counts[sentiment] += 1
+
+    return [
+        {"name": "positive", "value": counts["positive"]},
+        {"name": "neutral", "value": counts["neutral"]},
+        {"name": "negative", "value": counts["negative"]},
+    ]
+
+@app.get("/dashboard-summary")
+async def get_dashboard_summary():
+    posts = await db_manager.get_posts(limit=None, filters={})
+    total = len(posts)
+    citizen_reports = sum(1 for post in posts if post.get("platform") == "Citizen Portal")
+    social_posts = total - citizen_reports
+    negative_signals = sum(1 for post in posts if post.get("sentiment") == "negative")
+    recent_ingested = ingestion_state.get("last_post_count", 0)
+
+    return {
+        "total_signals": total,
+        "citizen_reports": citizen_reports,
+        "social_posts": social_posts,
+        "negative_signals": negative_signals,
+        "recent_ingested": recent_ingested,
+    }
+
 @app.get("/heatmap")
 async def get_heatmap():
     import folium
