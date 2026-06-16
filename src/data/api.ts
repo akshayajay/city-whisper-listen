@@ -4,6 +4,29 @@ import { toast } from "sonner";
 // Configure API base URL based on environment
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+export interface SocialMediaPost {
+  id: string;
+  platform: string;
+  content: string;
+  timestamp: string | number;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
+  sentiment?: string;
+  category?: string;
+}
+
+export interface IngestionStatus {
+  running: boolean;
+  mode: string;
+  interval_seconds: number;
+  last_run_at: string | null;
+  last_post_count: number;
+  total_processed: number;
+  connected_clients: number;
+  twitter_configured: boolean;
+}
+
 /**
  * Fetch social media posts from the backend API
  * @param options Options for filtering posts
@@ -137,32 +160,54 @@ export async function fetchPlatformData() {
   }
 }
 
+export async function fetchIngestionStatus(): Promise<IngestionStatus | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/ingestion-status`);
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching ingestion status:', error);
+    return null;
+  }
+}
+
 /**
  * Connect to the WebSocket for real-time updates
  * @param onMessage Callback for handling incoming messages
  * @returns WebSocket connection object with close method
  */
-export function connectToWebSocket(onMessage: (data: any) => void) {
+export function connectToWebSocket(
+  onMessage: (data: SocialMediaPost[]) => void,
+  onStatusChange?: (status: 'connecting' | 'connected' | 'disconnected' | 'error') => void
+) {
   try {
     const ws = new WebSocket(`${API_BASE_URL.replace('http', 'ws')}/ws`);
+    onStatusChange?.('connecting');
     
     ws.onopen = () => {
       console.log('WebSocket connection established');
+      onStatusChange?.('connected');
       toast.success('Live updates connected');
     };
     
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      onMessage(data);
+      onMessage(Array.isArray(data) ? data : [data]);
     };
     
     ws.onerror = (error) => {
       console.error('WebSocket error:', error);
+      onStatusChange?.('error');
       toast.error('Live updates connection error');
     };
     
     ws.onclose = () => {
       console.log('WebSocket connection closed');
+      onStatusChange?.('disconnected');
     };
     
     return {

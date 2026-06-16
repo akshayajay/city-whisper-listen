@@ -34,6 +34,14 @@ db_manager = DatabaseManager()
 twitter_client = TwitterClient()
 # Connected WebSocket clients
 connected_clients: List[WebSocket] = []
+ingestion_state: Dict[str, Any] = {
+    "running": False,
+    "mode": "mock",
+    "interval_seconds": 8,
+    "last_run_at": None,
+    "last_post_count": 0,
+    "total_processed": 0,
+}
 
 LOCATION_COORDS = {
     "Chennai": (13.0827, 80.2707),
@@ -87,6 +95,14 @@ async def root():
 async def health():
     return {"status": "ok"}
 
+@app.get("/ingestion-status")
+async def ingestion_status():
+    return {
+        **ingestion_state,
+        "connected_clients": len(connected_clients),
+        "twitter_configured": twitter_client.is_configured,
+    }
+
 async def seed_demo_data():
     """Ensure fresh demo data exists so a deployed dashboard is useful immediately."""
     existing_posts = await db_manager.get_posts(limit=1, filters={})
@@ -114,10 +130,15 @@ async def seed_demo_data():
         await db_manager.aggregate_hourly_trends(start, end)
 
 async def process_social_media_stream():
-    """Fetch and process tweets every hour"""
+    """Collect, analyze, store, aggregate, and broadcast new civic posts."""
+    interval_seconds = int(os.getenv("REALTIME_INGEST_INTERVAL_SECONDS", "8"))
+    ingestion_state["interval_seconds"] = interval_seconds
+    ingestion_state["mode"] = "twitter" if twitter_client.is_configured else "mock"
+    ingestion_state["running"] = True
+
     while True:
         now = datetime.now()
-        print(f"[{now}] Fetching tweets...")
+        print(f"[{now}] Collecting social posts...")
         try:
             tweets = await twitter_client.fetch_recent_posts()
             processed = []
@@ -137,19 +158,29 @@ async def process_social_media_stream():
                     'sentiment': sentiment,
                     'category': category
                 }
-                await db_manager.store_post(record)
-                processed.append(record)
-            # Broadcast
+                stored = await db_manager.store_post(record)
+                if stored:
+                    processed.append(record)
+
+            if processed:
+                hour_start = now.replace(minute=0, second=0, microsecond=0)
+                await db_manager.aggregate_hourly_trends(hour_start, datetime.now())
+
+            ingestion_state["last_run_at"] = datetime.now().isoformat()
+            ingestion_state["last_post_count"] = len(processed)
+            ingestion_state["total_processed"] += len(processed)
+
             if processed and connected_clients:
                 for ws in list(connected_clients):
                     try:
                         await ws.send_json(processed)
                     except:
                         connected_clients.remove(ws)
-            print(f"[{now}] Processed {len(processed)} tweets")
+
+            print(f"[{now}] Processed {len(processed)} social posts")
         except Exception as e:
             print(f"Error fetching/processing tweets: {e}")
-        await asyncio.sleep(3600)
+        await asyncio.sleep(interval_seconds)
 
 async def aggregate_trends_hourly():
     """Aggregate sentiment trends hourly"""

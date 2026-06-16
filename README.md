@@ -77,9 +77,12 @@ The backend also supports a `.env` file:
 ```
 USE_MOCK_ML=true
 ENABLE_BACKGROUND_JOBS=true
+REALTIME_INGEST_INTERVAL_SECONDS=8
 ```
 
 `USE_MOCK_ML=true` is the recommended default for deployment. It keeps the API fast and lightweight while still serving functional demo data. To use the transformer model in production, install `transformers` and `torch`, set `USE_MOCK_ML=false`, and provision a host with enough memory for the model.
+
+With background jobs enabled, the backend collects new civic signals every `REALTIME_INGEST_INTERVAL_SECONDS`, classifies them, stores them in SQLite, updates trend aggregates, and broadcasts them to connected dashboard clients over WebSocket. Without Twitter/X credentials, it runs a realistic Tamil Nadu demo stream across Twitter, Facebook, and the citizen portal.
 
 ## Deployment
 

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { sentimentTrendColors } from '@/data/socialMediaData';
@@ -13,9 +13,9 @@ type TimeInterval = 'daily' | 'weekly' | 'monthly';
 const SentimentTrendChart: React.FC = () => {
   const [interval, setInterval] = useState<TimeInterval>('daily');
   
-  // Calculate date range based on interval
-  const getDateRange = () => {
+  const { startDate, endDate } = useMemo(() => {
     const endDate = new Date();
+    endDate.setMinutes(0, 0, 0);
     let startDate: Date;
     
     switch(interval) {
@@ -38,9 +38,7 @@ const SentimentTrendChart: React.FC = () => {
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString()
     };
-  };
-  
-  const { startDate, endDate } = getDateRange();
+  }, [interval]);
   
   const { data, isLoading, error } = useQuery({
     queryKey: ['sentimentTrend', interval, startDate, endDate],

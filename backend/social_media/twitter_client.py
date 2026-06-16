@@ -94,17 +94,26 @@ class TwitterClient:
             return []
     
     def _get_mock_posts(self) -> List[Dict[str, Any]]:
-        """Generate mock Twitter posts for development"""
+        """Generate mock civic posts for local real-time development."""
         import random
-        from datetime import datetime, timedelta
+        from datetime import datetime
         
-        locations = ["Chennai", "Coimbatore", "Madurai", "Trichy", "Salem"]
+        locations = [
+            "Chennai", "Coimbatore", "Madurai", "Trichy", "Salem",
+            "Tirunelveli", "Thoothukudi", "Nagercoil"
+        ]
+        platforms = ["Twitter", "Facebook", "Citizen Portal"]
         topics = [
             "The roads in {loc} need immediate repair. Too many potholes!",
             "Loving the new park in {loc}. Great job by the municipality!",
             "Power outage in {loc} again. Third time this week!",
             "Water supply issue in {loc} has been fixed. Thanks to the corporation!",
-            "Heavy traffic near {loc} central due to ongoing construction."
+            "Heavy traffic near {loc} central due to ongoing construction.",
+            "Garbage bins are overflowing near the market in {loc}.",
+            "Streetlights are out near the bus stand in {loc}. It feels unsafe.",
+            "The government hospital queue in {loc} moved quickly today.",
+            "Drainage water is flooding the main street in {loc} after rain.",
+            "New bus frequency in {loc} is helping students reach college on time."
         ]
         
         # Create 1-3 random posts
@@ -114,14 +123,13 @@ class TwitterClient:
         for i in range(num_posts):
             loc = random.choice(locations)
             content = random.choice(topics).format(loc=loc)
-            # Random timestamp within the last hour
-            timestamp = (datetime.now() - timedelta(minutes=random.randint(5, 60))).isoformat()
+            now = datetime.now()
             
             post = {
-                'id': f"mock-tw-{int(datetime.now().timestamp())}-{i}",
-                'platform': 'Twitter',
+                'id': f"mock-{int(now.timestamp())}-{i}-{random.randint(100, 999)}",
+                'platform': random.choice(platforms),
                 'content': content,
-                'timestamp': timestamp,
+                'timestamp': now.isoformat(),
                 'location': loc
             }
             posts.append(post)

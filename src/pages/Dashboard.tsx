@@ -1,11 +1,12 @@
 
-import React, { useEffect } from 'react';
+import React, { useCallback } from 'react';
 import {
   BarChart3,
   MessageSquare,
   Map,
   TrendingUp,
-  RefreshCw
+  RefreshCw,
+  Radio
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import StatCard from '@/components/dashboard/StatCard';
@@ -18,7 +19,7 @@ import SocialMediaSources from '@/components/dashboard/SocialMediaSources';
 import SocialCategoryChart from '@/components/dashboard/SocialCategoryChart';
 import LiveUpdates from '@/components/dashboard/LiveUpdates';
 import { mockGrievances } from '@/data/mockData';
-import { fetchSocialMediaPosts } from '@/data/api';
+import { fetchIngestionStatus, fetchSocialMediaPosts, SocialMediaPost } from '@/data/api';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -29,7 +30,13 @@ const Dashboard: React.FC = () => {
   const { data: socialMediaPosts, isLoading } = useQuery({
     queryKey: ['socialMediaPosts'],
     queryFn: () => fetchSocialMediaPosts({ limit: 50 }),
-    refetchInterval: 60000, // Refetch every minute
+    refetchInterval: 30000,
+  });
+
+  const { data: ingestionStatus } = useQuery({
+    queryKey: ['ingestionStatus'],
+    queryFn: fetchIngestionStatus,
+    refetchInterval: 5000,
   });
   
   // Calculate stats from data
@@ -38,6 +45,22 @@ const Dashboard: React.FC = () => {
   const pendingCount = totalGrievances - resolvedCount;
   const trendingCount = mockGrievances.filter(g => g.upvotes > 20).length;
   const socialMediaCount = socialMediaPosts?.length || 0;
+  const liveMode = ingestionStatus?.running
+    ? `${ingestionStatus.mode === 'twitter' ? 'Twitter' : 'Demo'} live`
+    : 'Offline';
+
+  const handleLivePosts = useCallback((posts: SocialMediaPost[]) => {
+    queryClient.setQueryData<SocialMediaPost[]>(['socialMediaPosts'], (current = []) => {
+      const existingIds = new Set(current.map((post) => String(post.id)));
+      const uniquePosts = posts.filter((post) => !existingIds.has(String(post.id)));
+      return [...uniquePosts, ...current].slice(0, 50);
+    });
+
+    queryClient.invalidateQueries({ queryKey: ['sentimentTrend'] });
+    queryClient.invalidateQueries({ queryKey: ['socialCategories'] });
+    queryClient.invalidateQueries({ queryKey: ['platformData'] });
+    queryClient.invalidateQueries({ queryKey: ['ingestionStatus'] });
+  }, [queryClient]);
   
   // Refresh all data
   const handleRefresh = () => {
@@ -46,6 +69,7 @@ const Dashboard: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['sentimentTrend'] });
     queryClient.invalidateQueries({ queryKey: ['socialCategories'] });
     queryClient.invalidateQueries({ queryKey: ['platformData'] });
+    queryClient.invalidateQueries({ queryKey: ['ingestionStatus'] });
   };
   
   return (
@@ -67,7 +91,7 @@ const Dashboard: React.FC = () => {
         </Button>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <StatCard
           title="Total Grievances"
           value={totalGrievances}
@@ -98,11 +122,17 @@ const Dashboard: React.FC = () => {
           icon={<MessageSquare className="h-5 w-5" />}
           trend={isLoading ? undefined : { value: 23, isUpward: true }}
         />
+        <StatCard
+          title="Live Pipeline"
+          value={liveMode}
+          icon={<Radio className="h-5 w-5" />}
+          trend={ingestionStatus?.last_post_count ? { value: ingestionStatus.last_post_count, isUpward: true } : undefined}
+        />
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <TrendingIssues />
-        <LiveUpdates />
+        <LiveUpdates onPostsReceived={handleLivePosts} />
         <SocialMediaSources />
       </div>
       

@@ -1,53 +1,56 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { connectToWebSocket } from '@/data/api';
+import { connectToWebSocket, SocialMediaPost } from '@/data/api';
 import { toast } from 'sonner';
 
-interface Post {
-  id: string;
-  platform: string;
-  content: string;
-  timestamp: string;
-  sentiment: string;
-  category: string;
+interface LiveUpdatesProps {
+  onPostsReceived?: (posts: SocialMediaPost[]) => void;
 }
 
-const LiveUpdates: React.FC = () => {
-  const [livePosts, setLivePosts] = useState<Post[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
+type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
+
+const LiveUpdates: React.FC<LiveUpdatesProps> = ({ onPostsReceived }) => {
+  const [livePosts, setLivePosts] = useState<SocialMediaPost[]>([]);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
 
   useEffect(() => {
-    // Connect to WebSocket for live updates
     const connection = connectToWebSocket((data) => {
-      // Process incoming data (which is an array of new posts)
       if (Array.isArray(data) && data.length > 0) {
-        // Add new posts to the list
         setLivePosts((prevPosts) => {
-          // Add new posts to the beginning of the array
           const updatedPosts = [...data, ...prevPosts];
-          // Keep only the most recent 5 posts
-          return updatedPosts.slice(0, 5);
+          return updatedPosts.slice(0, 8);
         });
+        onPostsReceived?.(data);
         
-        // Show a toast notification for new posts
         toast.info(`${data.length} new post(s) received`);
       }
-      
-      setIsConnected(true);
-    });
+    }, setConnectionStatus);
 
-    // Clean up WebSocket connection when component unmounts
     return () => {
       connection.close();
     };
-  }, []);
+  }, [onPostsReceived]);
 
-  const getSentimentColor = (sentiment: string) => {
+  const getSentimentColor = (sentiment?: string) => {
     if (sentiment === 'positive') return 'bg-green-100 text-green-800';
     if (sentiment === 'negative') return 'bg-red-100 text-red-800';
     return 'bg-gray-100 text-gray-800';
   };
+
+  const statusLabel = {
+    connecting: 'Connecting',
+    connected: 'Live',
+    disconnected: 'Offline',
+    error: 'Error',
+  }[connectionStatus];
+
+  const statusClass = {
+    connecting: 'bg-amber-400',
+    connected: 'bg-green-500',
+    disconnected: 'bg-gray-300',
+    error: 'bg-red-500',
+  }[connectionStatus];
 
   return (
     <Card className="col-span-1">
@@ -56,10 +59,10 @@ const LiveUpdates: React.FC = () => {
           <CardTitle>Live Updates</CardTitle>
           <div className="flex items-center gap-2">
             <div 
-              className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-300'}`}
+              className={`w-2 h-2 rounded-full ${statusClass}`}
             />
             <span className="text-xs text-gray-500">
-              {isConnected ? 'Connected' : 'Connecting...'}
+              {statusLabel}
             </span>
           </div>
         </div>
@@ -67,8 +70,8 @@ const LiveUpdates: React.FC = () => {
       <CardContent className="pt-0">
         {livePosts.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            <p>Waiting for live updates...</p>
-            <p className="text-xs mt-2">New social media posts will appear here</p>
+            <p>Waiting for live civic signals...</p>
+            <p className="text-xs mt-2">New grievances and posts will appear here</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -76,12 +79,12 @@ const LiveUpdates: React.FC = () => {
               <div key={post.id} className="border rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
                   <Badge variant="outline">{post.platform}</Badge>
-                  <Badge variant="secondary">{post.category}</Badge>
+                  <Badge variant="secondary">{post.category || 'uncategorized'}</Badge>
                 </div>
                 <p className="text-sm mb-2">{post.content}</p>
                 <div className="flex items-center justify-between text-xs text-gray-500">
                   <Badge className={getSentimentColor(post.sentiment)}>
-                    {post.sentiment}
+                    {post.sentiment || 'neutral'}
                   </Badge>
                   <span>
                     {new Date(post.timestamp).toLocaleTimeString()}

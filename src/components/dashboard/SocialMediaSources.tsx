@@ -12,14 +12,19 @@ const SocialMediaSources: React.FC = () => {
     refetchInterval: 60000, // Refetch every minute
   });
   
-  // If we're loading or have an error, calculate from mock data
-  const twitterCount = data 
-    ? data.find((item: any) => item.platform === 'Twitter')?.count || 0
+  const getCount = (platform: string) => data
+    ? data.find((item: any) => item.platform?.toLowerCase() === platform.toLowerCase())?.count || 0
+    : mockSocialMediaPosts.filter(post => post.platform.toLowerCase() === platform.toLowerCase()).length;
+
+  const twitterCount = data
+    ? getCount('Twitter')
     : mockSocialMediaPosts.filter(post => post.platform === 'Twitter').length;
     
   const facebookCount = data
-    ? data.find((item: any) => item.platform === 'Facebook')?.count || 0
+    ? getCount('Facebook')
     : mockSocialMediaPosts.filter(post => post.platform === 'Facebook').length;
+
+  const citizenPortalCount = data ? getCount('Citizen Portal') : 0;
   
   return (
     <Card className="col-span-1">
@@ -28,16 +33,21 @@ const SocialMediaSources: React.FC = () => {
         {isLoading && <p className="text-xs text-gray-500">Refreshing data...</p>}
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-3">
           <div className="flex flex-col items-center justify-center p-4 bg-blue-50 rounded-lg">
-            <span className="text-xl font-bold text-blue-500">Twitter</span>
+            <span className="text-sm font-bold text-blue-500">Twitter</span>
             <span className="text-3xl font-bold mt-2">{twitterCount}</span>
             <span className="text-sm text-gray-500 mt-1">posts collected</span>
           </div>
           <div className="flex flex-col items-center justify-center p-4 bg-indigo-50 rounded-lg">
-            <span className="text-xl font-bold text-indigo-600">Facebook</span>
+            <span className="text-sm font-bold text-indigo-600">Facebook</span>
             <span className="text-3xl font-bold mt-2">{facebookCount}</span>
             <span className="text-sm text-gray-500 mt-1">posts collected</span>
+          </div>
+          <div className="flex flex-col items-center justify-center p-4 bg-emerald-50 rounded-lg">
+            <span className="text-sm font-bold text-emerald-600">Portal</span>
+            <span className="text-3xl font-bold mt-2">{citizenPortalCount}</span>
+            <span className="text-sm text-gray-500 mt-1">reports collected</span>
           </div>
         </div>
       </CardContent>
