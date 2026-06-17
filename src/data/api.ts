@@ -89,6 +89,24 @@ export interface GeoAnalytics {
   };
 }
 
+export interface SentimentBreakdownRow {
+  name: string;
+  positive: number;
+  neutral: number;
+  negative: number;
+  total: number;
+  [key: string]: string | number;
+}
+
+export interface AnalyticsOverview {
+  total_signals: number;
+  sentiment_totals: Array<{ name: string; value: number }>;
+  category_sentiment: SentimentBreakdownRow[];
+  source_sentiment: SentimentBreakdownRow[];
+  location_sentiment: SentimentBreakdownRow[];
+  issue_source_matrix: Array<Record<string, string | number>>;
+}
+
 /**
  * Fetch social media posts from the backend API
  * @param options Options for filtering posts
@@ -331,6 +349,21 @@ export async function fetchGeoAnalytics(options: {
     return await response.json();
   } catch (error) {
     console.error('Error fetching geo analytics:', error);
+    return null;
+  }
+}
+
+export async function fetchAnalyticsOverview(): Promise<AnalyticsOverview | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/analytics-overview`);
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching analytics overview:', error);
     return null;
   }
 }

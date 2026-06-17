@@ -55,8 +55,8 @@ const Sidebar = () => {
             <SidebarItem 
               icon={<PieChart className="h-5 w-5" />} 
               label="Analytics" 
-              path="/dashboard#analytics" 
-              active={currentHash === '#analytics'}
+              path="/dashboard#cross-analytics" 
+              active={currentHash === '#cross-analytics'}
             />
             <SidebarItem 
               icon={<TrendingUp className="h-5 w-5" />} 

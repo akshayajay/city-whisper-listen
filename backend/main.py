@@ -124,6 +124,14 @@ class GeoAnalytics(BaseModel):
     source_totals: List[Dict[str, Any]]
     bounds: Dict[str, float]
 
+class AnalyticsOverview(BaseModel):
+    total_signals: int
+    sentiment_totals: List[Dict[str, Any]]
+    category_sentiment: List[Dict[str, Any]]
+    source_sentiment: List[Dict[str, Any]]
+    location_sentiment: List[Dict[str, Any]]
+    issue_source_matrix: List[Dict[str, Any]]
+
 @app.on_event("startup")
 async def startup_event():
     await seed_demo_data()
@@ -443,6 +451,89 @@ async def get_geo_analytics(
             for name, value in sorted(source_totals.items(), key=lambda item: item[1], reverse=True)
         ],
         bounds=bounds,
+    )
+
+@app.get("/analytics-overview", response_model=AnalyticsOverview)
+async def get_analytics_overview():
+    posts = await db_manager.get_posts(limit=None, filters={})
+    sentiments = ("positive", "neutral", "negative")
+    sentiment_totals = {sentiment: 0 for sentiment in sentiments}
+    category_sentiment: Dict[str, Dict[str, Any]] = {}
+    source_sentiment: Dict[str, Dict[str, Any]] = {}
+    location_sentiment: Dict[str, Dict[str, Any]] = {}
+    issue_source_matrix: Dict[str, Dict[str, Any]] = {}
+
+    for post in posts:
+        sentiment = post.get("sentiment") or "neutral"
+        if sentiment not in sentiment_totals:
+            sentiment = "neutral"
+        category = post.get("category") or "uncategorized"
+        source = post.get("platform") or "Unknown"
+        location = post.get("location") or "Tamil Nadu"
+
+        sentiment_totals[sentiment] += 1
+
+        category_row = category_sentiment.setdefault(category, {
+            "name": category,
+            "positive": 0,
+            "neutral": 0,
+            "negative": 0,
+            "total": 0,
+        })
+        category_row[sentiment] += 1
+        category_row["total"] += 1
+
+        source_row = source_sentiment.setdefault(source, {
+            "name": source,
+            "positive": 0,
+            "neutral": 0,
+            "negative": 0,
+            "total": 0,
+        })
+        source_row[sentiment] += 1
+        source_row["total"] += 1
+
+        location_row = location_sentiment.setdefault(location, {
+            "name": location,
+            "positive": 0,
+            "neutral": 0,
+            "negative": 0,
+            "total": 0,
+        })
+        location_row[sentiment] += 1
+        location_row["total"] += 1
+
+        matrix_row = issue_source_matrix.setdefault(category, {"name": category, "total": 0})
+        matrix_row[source] = matrix_row.get(source, 0) + 1
+        matrix_row["total"] += 1
+
+    return AnalyticsOverview(
+        total_signals=len(posts),
+        sentiment_totals=[
+            {"name": "positive", "value": sentiment_totals["positive"]},
+            {"name": "neutral", "value": sentiment_totals["neutral"]},
+            {"name": "negative", "value": sentiment_totals["negative"]},
+        ],
+        category_sentiment=sorted(
+            category_sentiment.values(),
+            key=lambda item: item["total"],
+            reverse=True,
+        )[:10],
+        source_sentiment=sorted(
+            source_sentiment.values(),
+            key=lambda item: item["total"],
+            reverse=True,
+        ),
+        location_sentiment=sorted(
+            location_sentiment.values(),
+            key=lambda item: item["total"],
+            reverse=True,
+        )[:10],
+        issue_source_matrix=sorted(
+            issue_source_matrix.values(),
+            key=lambda item: item["total"],
+            reverse=True,
+        )[:10],
     )
 
 @app.post("/grievances", response_model=SocialMediaPost)

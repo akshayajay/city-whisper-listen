@@ -18,6 +18,7 @@ import SentimentTrendChart from '@/components/dashboard/SentimentTrendChart';
 import SocialMediaSources from '@/components/dashboard/SocialMediaSources';
 import SocialCategoryChart from '@/components/dashboard/SocialCategoryChart';
 import LiveUpdates from '@/components/dashboard/LiveUpdates';
+import CivicAnalyticsOverview from '@/components/dashboard/CivicAnalyticsOverview';
 import { fetchDashboardSummary, fetchIngestionStatus, fetchSocialMediaPosts, SocialMediaPost } from '@/data/api';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -91,6 +92,7 @@ const Dashboard: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['ingestionStatus'] });
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
     queryClient.invalidateQueries({ queryKey: ['messageQueue'] });
+    queryClient.invalidateQueries({ queryKey: ['analyticsOverview'] });
   }, [postsQueryKey, queryClient, searchTerm, sourceFilter]);
   
   // Refresh all data
@@ -105,6 +107,7 @@ const Dashboard: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['ingestionStatus'] });
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
     queryClient.invalidateQueries({ queryKey: ['messageQueue'] });
+    queryClient.invalidateQueries({ queryKey: ['analyticsOverview'] });
   };
   
   return (
@@ -182,6 +185,10 @@ const Dashboard: React.FC = () => {
       
       <div id="trends" className="scroll-mt-24">
         <SentimentTrendChart />
+      </div>
+
+      <div id="cross-analytics" className="scroll-mt-24">
+        <CivicAnalyticsOverview />
       </div>
       
       <div id="analytics" className="scroll-mt-24 grid grid-cols-1 lg:grid-cols-3 gap-6">
