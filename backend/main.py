@@ -100,6 +100,30 @@ class MessageQueueItem(BaseModel):
     priority: str = "normal"
     timestamp: str
 
+class GeoHotspot(BaseModel):
+    location: str
+    latitude: float
+    longitude: float
+    total: int
+    negative: int
+    neutral: int
+    positive: int
+    urgency_score: int
+    dominant_category: str
+    top_source: str
+    recent_posts: List[SocialMediaPost]
+
+class GeoAnalytics(BaseModel):
+    total_signals: int
+    mapped_signals: int
+    unmapped_signals: int
+    negative_signals: int
+    hotspots: List[GeoHotspot]
+    category_totals: List[Dict[str, Any]]
+    sentiment_totals: List[Dict[str, Any]]
+    source_totals: List[Dict[str, Any]]
+    bounds: Dict[str, float]
+
 @app.on_event("startup")
 async def startup_event():
     await seed_demo_data()
@@ -296,6 +320,130 @@ async def get_message_queue(limit: int = 5):
         ))
 
     return items
+
+@app.get("/geo-analytics", response_model=GeoAnalytics)
+async def get_geo_analytics(
+    category: Optional[str] = None,
+    sentiment: Optional[str] = None,
+    platform: Optional[str] = None,
+    limit: int = 12,
+):
+    filters: Dict[str, Any] = {}
+    if category:
+        filters["category"] = category
+    if sentiment:
+        filters["sentiment"] = sentiment
+    if platform:
+        filters["platform"] = platform
+
+    posts = await db_manager.get_posts(limit=None, filters=filters)
+    mapped_posts = [
+        post for post in posts
+        if post.get("latitude") is not None and post.get("longitude") is not None
+    ]
+
+    grouped: Dict[str, Dict[str, Any]] = {}
+    category_totals: Dict[str, int] = {}
+    sentiment_totals = {"positive": 0, "neutral": 0, "negative": 0}
+    source_totals: Dict[str, int] = {}
+
+    for post in posts:
+        category_name = post.get("category") or "uncategorized"
+        sentiment_name = post.get("sentiment") or "neutral"
+        source_name = post.get("platform") or "Unknown"
+        category_totals[category_name] = category_totals.get(category_name, 0) + 1
+        if sentiment_name in sentiment_totals:
+            sentiment_totals[sentiment_name] += 1
+        source_totals[source_name] = source_totals.get(source_name, 0) + 1
+
+    for post in mapped_posts:
+        location = post.get("location") or "Tamil Nadu"
+        latitude = float(post.get("latitude"))
+        longitude = float(post.get("longitude"))
+        key = f"{location}|{latitude:.4f}|{longitude:.4f}"
+        bucket = grouped.setdefault(key, {
+            "location": location,
+            "latitude": latitude,
+            "longitude": longitude,
+            "posts": [],
+            "sentiments": {"positive": 0, "neutral": 0, "negative": 0},
+            "categories": {},
+            "sources": {},
+        })
+        bucket["posts"].append(post)
+        sentiment_name = post.get("sentiment") or "neutral"
+        if sentiment_name in bucket["sentiments"]:
+            bucket["sentiments"][sentiment_name] += 1
+        category_name = post.get("category") or "uncategorized"
+        source_name = post.get("platform") or "Unknown"
+        bucket["categories"][category_name] = bucket["categories"].get(category_name, 0) + 1
+        bucket["sources"][source_name] = bucket["sources"].get(source_name, 0) + 1
+
+    hotspots: List[GeoHotspot] = []
+    for bucket in grouped.values():
+        posts_for_location = sorted(bucket["posts"], key=lambda item: item.get("timestamp", ""), reverse=True)
+        total = len(posts_for_location)
+        negative = bucket["sentiments"]["negative"]
+        neutral = bucket["sentiments"]["neutral"]
+        positive = bucket["sentiments"]["positive"]
+        dominant_category = max(bucket["categories"], key=bucket["categories"].get) if bucket["categories"] else "uncategorized"
+        top_source = max(bucket["sources"], key=bucket["sources"].get) if bucket["sources"] else "Unknown"
+        urgency_score = (negative * 3) + (neutral * 2) + positive + min(total, 10)
+        hotspots.append(GeoHotspot(
+            location=bucket["location"],
+            latitude=bucket["latitude"],
+            longitude=bucket["longitude"],
+            total=total,
+            negative=negative,
+            neutral=neutral,
+            positive=positive,
+            urgency_score=urgency_score,
+            dominant_category=dominant_category,
+            top_source=top_source,
+            recent_posts=[SocialMediaPost(**post) for post in posts_for_location[:3]],
+        ))
+
+    hotspots.sort(key=lambda item: (item.urgency_score, item.total), reverse=True)
+    selected_hotspots = hotspots[:limit]
+
+    if mapped_posts:
+        latitudes = [float(post["latitude"]) for post in mapped_posts]
+        longitudes = [float(post["longitude"]) for post in mapped_posts]
+        bounds = {
+            "min_latitude": min(latitudes),
+            "max_latitude": max(latitudes),
+            "min_longitude": min(longitudes),
+            "max_longitude": max(longitudes),
+        }
+    else:
+        bounds = {
+            "min_latitude": 8.0,
+            "max_latitude": 13.5,
+            "min_longitude": 76.0,
+            "max_longitude": 80.5,
+        }
+
+    return GeoAnalytics(
+        total_signals=len(posts),
+        mapped_signals=len(mapped_posts),
+        unmapped_signals=len(posts) - len(mapped_posts),
+        negative_signals=sentiment_totals["negative"],
+        hotspots=selected_hotspots,
+        category_totals=[
+            {"name": name, "value": value}
+            for name, value in sorted(category_totals.items(), key=lambda item: item[1], reverse=True)
+        ],
+        sentiment_totals=[
+            {"name": "positive", "value": sentiment_totals["positive"]},
+            {"name": "neutral", "value": sentiment_totals["neutral"]},
+            {"name": "negative", "value": sentiment_totals["negative"]},
+        ],
+        source_totals=[
+            {"platform": name, "count": value}
+            for name, value in sorted(source_totals.items(), key=lambda item: item[1], reverse=True)
+        ],
+        bounds=bounds,
+    )
 
 @app.post("/grievances", response_model=SocialMediaPost)
 async def submit_grievance(grievance: GrievanceSubmission):
