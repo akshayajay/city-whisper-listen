@@ -1,16 +1,41 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Bell, MessageSquare, Search, Settings, Twitter, Facebook } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
+import { fetchIngestionStatus, fetchMessageQueue, fetchNotifications } from '@/data/api';
 
 const Navbar = () => {
+  const navigate = useNavigate();
+  const { data: notifications = [] } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: fetchNotifications,
+    refetchInterval: 10000,
+  });
+  const { data: messageQueue = [] } = useQuery({
+    queryKey: ['messageQueue'],
+    queryFn: () => fetchMessageQueue(5),
+    refetchInterval: 10000,
+  });
+  const { data: ingestionStatus } = useQuery({
+    queryKey: ['ingestionStatus'],
+    queryFn: fetchIngestionStatus,
+    refetchInterval: 5000,
+  });
+
   const handleSearch = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       const value = event.currentTarget.value.trim();
-      toast.info(value ? `Searching live civic signals for "${value}"` : 'Enter a search term first');
+      if (!value) {
+        toast.info('Enter a search term first');
+        return;
+      }
+
+      navigate(`/dashboard?search=${encodeURIComponent(value)}#live`);
+      toast.success(`Showing live civic signals for "${value}"`);
     }
   };
 
@@ -51,9 +76,12 @@ const Navbar = () => {
             <DropdownMenuContent align="end" className="w-72">
               <DropdownMenuLabel>Notifications</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Live ingestion stream is active</DropdownMenuItem>
-              <DropdownMenuItem>New citizen portal reports appear instantly</DropdownMenuItem>
-              <DropdownMenuItem>Sentiment and category charts refresh on updates</DropdownMenuItem>
+              {notifications.map((notification) => (
+                <DropdownMenuItem key={`${notification.title}-${notification.detail}`} className="flex-col items-start gap-1 whitespace-normal">
+                  <span className="font-medium">{notification.title}</span>
+                  <span className="text-xs text-muted-foreground">{notification.detail}</span>
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
@@ -66,9 +94,18 @@ const Navbar = () => {
             <DropdownMenuContent align="end" className="w-72">
               <DropdownMenuLabel>Message Queue</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>3 high-priority grievances need review</DropdownMenuItem>
-              <DropdownMenuItem>2 infrastructure reports are trending</DropdownMenuItem>
-              <DropdownMenuItem>Water supply alerts are being monitored</DropdownMenuItem>
+              {messageQueue.length ? messageQueue.map((message) => (
+                <DropdownMenuItem
+                  key={message.id}
+                  className="flex-col items-start gap-1 whitespace-normal"
+                  onSelect={() => navigate(`/dashboard?search=${encodeURIComponent(message.location || message.category || '')}#live`)}
+                >
+                  <span className="font-medium">{message.title}</span>
+                  <span className="line-clamp-2 text-xs text-muted-foreground">{message.detail}</span>
+                </DropdownMenuItem>
+              )) : (
+                <DropdownMenuItem>No priority messages right now</DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
@@ -81,14 +118,14 @@ const Navbar = () => {
             <DropdownMenuContent align="end" className="w-64">
               <DropdownMenuLabel>Dashboard Settings</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => toast.success('Realtime refresh is enabled')}>
-                Realtime refresh enabled
+              <DropdownMenuItem onSelect={() => toast.success(`Realtime refresh is ${ingestionStatus?.running ? 'enabled' : 'offline'}`)}>
+                Realtime refresh {ingestionStatus?.running ? 'enabled' : 'offline'}
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => toast.info('Demo stream uses Tamil Nadu civic sample data')}>
-                Demo stream details
+              <DropdownMenuItem onSelect={() => toast.info(`Current source mode: ${ingestionStatus?.mode || 'unknown'}`)}>
+                Source mode: {ingestionStatus?.mode || 'unknown'}
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => toast.info('Add API credentials in backend environment variables')}>
-                Credential setup
+              <DropdownMenuItem onSelect={() => toast.info(ingestionStatus?.twitter_configured ? 'Twitter credentials are configured' : 'Add Twitter/API credentials in backend environment variables')}>
+                Credentials: {ingestionStatus?.twitter_configured ? 'configured' : 'needed for real APIs'}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

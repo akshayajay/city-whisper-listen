@@ -42,6 +42,22 @@ export interface DashboardSummary {
   recent_ingested: number;
 }
 
+export interface DashboardNotification {
+  title: string;
+  detail: string;
+  level: 'info' | 'success' | 'warning';
+}
+
+export interface MessageQueueItem {
+  id: string;
+  title: string;
+  detail: string;
+  category?: string;
+  location?: string;
+  priority: 'normal' | 'high';
+  timestamp: string;
+}
+
 /**
  * Fetch social media posts from the backend API
  * @param options Options for filtering posts
@@ -52,6 +68,7 @@ export async function fetchSocialMediaPosts(options: {
   platform?: string; 
   category?: string;
   sentiment?: string;
+  search?: string;
 } = {}) {
   try {
     // Build query string
@@ -60,6 +77,7 @@ export async function fetchSocialMediaPosts(options: {
     if (options.platform) params.append('platform', options.platform);
     if (options.category) params.append('category', options.category);
     if (options.sentiment) params.append('sentiment', options.sentiment);
+    if (options.search) params.append('search', options.search);
     
     const response = await fetch(`${API_BASE_URL}/posts?${params.toString()}`);
     
@@ -221,6 +239,42 @@ export async function fetchIngestionStatus(): Promise<IngestionStatus | null> {
   } catch (error) {
     console.error('Error fetching ingestion status:', error);
     return null;
+  }
+}
+
+export async function fetchNotifications(): Promise<DashboardNotification[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/notifications`);
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    return [
+      {
+        title: 'Backend unavailable',
+        detail: 'Start the FastAPI service to load live notifications.',
+        level: 'warning',
+      },
+    ];
+  }
+}
+
+export async function fetchMessageQueue(limit: number = 5): Promise<MessageQueueItem[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/message-queue?limit=${limit}`);
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching message queue:', error);
+    return [];
   }
 }
 

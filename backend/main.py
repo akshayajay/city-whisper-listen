@@ -86,6 +86,20 @@ class GrievanceSubmission(BaseModel):
     area: str
     district: str
 
+class DashboardNotification(BaseModel):
+    title: str
+    detail: str
+    level: str = "info"
+
+class MessageQueueItem(BaseModel):
+    id: str
+    title: str
+    detail: str
+    category: Optional[str] = None
+    location: Optional[str] = None
+    priority: str = "normal"
+    timestamp: str
+
 @app.on_event("startup")
 async def startup_event():
     await seed_demo_data()
@@ -218,7 +232,8 @@ async def get_posts(
     limit: int = 50,
     platform: Optional[str] = None,
     category: Optional[str] = None,
-    sentiment: Optional[str] = None
+    sentiment: Optional[str] = None,
+    search: Optional[str] = None,
 ):
     filters: Dict[str, Any] = {}
     if platform:
@@ -227,8 +242,60 @@ async def get_posts(
         filters['category'] = category
     if sentiment:
         filters['sentiment'] = sentiment
-    recs = await db_manager.get_posts(limit=limit, filters=filters)
+    recs = await db_manager.get_posts(limit=limit, filters=filters, search=search)
     return [SocialMediaPost(**r) for r in recs]
+
+@app.get("/notifications", response_model=List[DashboardNotification])
+async def get_notifications():
+    posts = await db_manager.get_posts(limit=None, filters={})
+    recent_posts = await db_manager.get_posts(limit=25, filters={})
+    negative_count = sum(1 for post in recent_posts if post.get("sentiment") == "negative")
+    portal_count = sum(1 for post in recent_posts if post.get("platform") == "Citizen Portal")
+    active_sources = sorted({post.get("platform") for post in posts if post.get("platform")})
+
+    return [
+        DashboardNotification(
+            title="Live pipeline",
+            detail=f"{ingestion_state['mode'].title()} ingestion is {'running' if ingestion_state['running'] else 'offline'} with {len(connected_clients)} live client(s).",
+            level="success" if ingestion_state["running"] else "warning",
+        ),
+        DashboardNotification(
+            title="Recent intake",
+            detail=f"{len(recent_posts)} latest signals include {portal_count} citizen report(s) and {negative_count} negative signal(s).",
+            level="warning" if negative_count else "info",
+        ),
+        DashboardNotification(
+            title="Connected sources",
+            detail=", ".join(active_sources) if active_sources else "No active source data yet.",
+            level="info",
+        ),
+    ]
+
+@app.get("/message-queue", response_model=List[MessageQueueItem])
+async def get_message_queue(limit: int = 5):
+    posts = await db_manager.get_posts(limit=None, filters={})
+    critical_categories = {"safety", "water", "infrastructure", "waste"}
+    priority_posts = [
+        post for post in posts
+        if post.get("sentiment") == "negative" or post.get("category") in critical_categories
+    ]
+
+    items = []
+    for post in priority_posts[:limit]:
+        category = post.get("category") or "general"
+        location = post.get("location") or "Tamil Nadu"
+        priority = "high" if post.get("sentiment") == "negative" else "normal"
+        items.append(MessageQueueItem(
+            id=str(post.get("id")),
+            title=f"{category.title()} signal in {location}",
+            detail=post.get("content", ""),
+            category=category,
+            location=location,
+            priority=priority,
+            timestamp=post.get("timestamp", datetime.now().isoformat()),
+        ))
+
+    return items
 
 @app.post("/grievances", response_model=SocialMediaPost)
 async def submit_grievance(grievance: GrievanceSubmission):
