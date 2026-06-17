@@ -51,6 +51,11 @@ npm install
 npm run dev
 ```
 
+View the dashboard at:
+
+- Local development: http://localhost:8080/dashboard
+- Local preview build: http://127.0.0.1:4173/dashboard
+
 ### Setting Up the Backend
 ```bash
 # Navigate to backend directory
