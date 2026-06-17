@@ -58,6 +58,11 @@ export interface MessageQueueItem {
   timestamp: string;
 }
 
+export interface PlatformData {
+  platform: string;
+  count: number;
+}
+
 export interface GeoHotspot {
   location: string;
   latitude: number;
@@ -226,7 +231,7 @@ export async function fetchCategoryData() {
  * Fetch platform data from the backend API
  * @returns Object with counts by platform
  */
-export async function fetchPlatformData() {
+export async function fetchPlatformData(): Promise<PlatformData[] | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/platform-data`);
     

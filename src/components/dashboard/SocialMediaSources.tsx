@@ -13,7 +13,7 @@ const SocialMediaSources: React.FC = () => {
   });
   
   const getCount = (platform: string) => data
-    ? data.find((item: any) => item.platform?.toLowerCase() === platform.toLowerCase())?.count || 0
+    ? data.find((item) => item.platform?.toLowerCase() === platform.toLowerCase())?.count || 0
     : mockSocialMediaPosts.filter(post => post.platform.toLowerCase() === platform.toLowerCase()).length;
 
   const twitterCount = data

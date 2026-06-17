@@ -12,7 +12,7 @@ const SocialCategoryChart: React.FC = () => {
     refetchInterval: 30000,
   });
 
-  const chartData = data?.map((item: any) => ({
+  const chartData = data?.map((item) => ({
     name: item.platform,
     value: item.count,
   })) || [];
