@@ -89,6 +89,22 @@ REALTIME_INGEST_INTERVAL_SECONDS=8
 
 With background jobs enabled, the backend collects new civic signals every `REALTIME_INGEST_INTERVAL_SECONDS`, classifies them, stores them in SQLite, updates trend aggregates, and broadcasts them to connected dashboard clients over WebSocket. Without Twitter/X credentials, it runs a realistic Tamil Nadu demo stream across Twitter, Facebook, and the citizen portal.
 
+## Tests
+
+This repository includes backend unit tests and a GitHub Actions workflow in `.github/workflows/tests.yml`.
+
+Run backend unit tests:
+```bash
+cd backend
+USE_MOCK_ML=true ENABLE_BACKGROUND_JOBS=false python -m unittest discover -s tests -v
+```
+
+Run frontend checks:
+```bash
+npm run lint
+npm run build
+```
+
 ## Deployment
 
 ### Render full-stack deployment
