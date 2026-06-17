@@ -16,6 +16,7 @@ dist-ssr
 __pycache__/
 *.py[cod]
 backend/.venv/
+data.db
 backend/data.db
 backend/static/
 

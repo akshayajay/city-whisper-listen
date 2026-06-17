@@ -199,7 +199,12 @@ class DatabaseManager:
             print(f"Error aggregating trends: {e}")
             return False
     
-    async def get_posts(self, limit: int = 50, filters: Dict[str, str] = None) -> List[Dict[str, Any]]:
+    async def get_posts(
+        self,
+        limit: Optional[int] = 50,
+        filters: Optional[Dict[str, str]] = None,
+        search: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         """Get posts from the database with optional filters"""
         try:
             loop = asyncio.get_event_loop()
@@ -211,16 +216,24 @@ class DatabaseManager:
                 
                 query = "SELECT * FROM posts"
                 params = []
+                conditions = []
                 
-                # Add filters if provided
                 if filters:
-                    conditions = []
+                    allowed_filters = {"platform", "category", "sentiment"}
                     for key, value in filters.items():
-                        conditions.append(f"{key} = ?")
-                        params.append(value)
-                    
-                    if conditions:
-                        query += " WHERE " + " AND ".join(conditions)
+                        if key in allowed_filters and value:
+                            conditions.append(f"{key} = ?")
+                            params.append(value)
+
+                if search:
+                    like_term = f"%{search}%"
+                    conditions.append(
+                        "(content LIKE ? OR location LIKE ? OR category LIKE ? OR platform LIKE ? OR sentiment LIKE ?)"
+                    )
+                    params.extend([like_term, like_term, like_term, like_term, like_term])
+
+                if conditions:
+                    query += " WHERE " + " AND ".join(conditions)
                 
                 # Add limit and order by most recent
                 query += " ORDER BY timestamp DESC"

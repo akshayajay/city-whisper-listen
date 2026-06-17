@@ -42,6 +42,76 @@ export interface DashboardSummary {
   recent_ingested: number;
 }
 
+export interface DashboardNotification {
+  title: string;
+  detail: string;
+  level: 'info' | 'success' | 'warning';
+}
+
+export interface MessageQueueItem {
+  id: string;
+  title: string;
+  detail: string;
+  category?: string;
+  location?: string;
+  priority: 'normal' | 'high';
+  timestamp: string;
+}
+
+export interface PlatformData {
+  platform: string;
+  count: number;
+}
+
+export interface GeoHotspot {
+  location: string;
+  latitude: number;
+  longitude: number;
+  total: number;
+  negative: number;
+  neutral: number;
+  positive: number;
+  urgency_score: number;
+  dominant_category: string;
+  top_source: string;
+  recent_posts: SocialMediaPost[];
+}
+
+export interface GeoAnalytics {
+  total_signals: number;
+  mapped_signals: number;
+  unmapped_signals: number;
+  negative_signals: number;
+  hotspots: GeoHotspot[];
+  category_totals: Array<{ name: string; value: number }>;
+  sentiment_totals: Array<{ name: string; value: number }>;
+  source_totals: Array<{ platform: string; count: number }>;
+  bounds: {
+    min_latitude: number;
+    max_latitude: number;
+    min_longitude: number;
+    max_longitude: number;
+  };
+}
+
+export interface SentimentBreakdownRow {
+  name: string;
+  positive: number;
+  neutral: number;
+  negative: number;
+  total: number;
+  [key: string]: string | number;
+}
+
+export interface AnalyticsOverview {
+  total_signals: number;
+  sentiment_totals: Array<{ name: string; value: number }>;
+  category_sentiment: SentimentBreakdownRow[];
+  source_sentiment: SentimentBreakdownRow[];
+  location_sentiment: SentimentBreakdownRow[];
+  issue_source_matrix: Array<Record<string, string | number>>;
+}
+
 /**
  * Fetch social media posts from the backend API
  * @param options Options for filtering posts
@@ -52,6 +122,7 @@ export async function fetchSocialMediaPosts(options: {
   platform?: string; 
   category?: string;
   sentiment?: string;
+  search?: string;
 } = {}) {
   try {
     // Build query string
@@ -60,6 +131,7 @@ export async function fetchSocialMediaPosts(options: {
     if (options.platform) params.append('platform', options.platform);
     if (options.category) params.append('category', options.category);
     if (options.sentiment) params.append('sentiment', options.sentiment);
+    if (options.search) params.append('search', options.search);
     
     const response = await fetch(`${API_BASE_URL}/posts?${params.toString()}`);
     
@@ -159,7 +231,7 @@ export async function fetchCategoryData() {
  * Fetch platform data from the backend API
  * @returns Object with counts by platform
  */
-export async function fetchPlatformData() {
+export async function fetchPlatformData(): Promise<PlatformData[] | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/platform-data`);
     
@@ -220,6 +292,83 @@ export async function fetchIngestionStatus(): Promise<IngestionStatus | null> {
     return await response.json();
   } catch (error) {
     console.error('Error fetching ingestion status:', error);
+    return null;
+  }
+}
+
+export async function fetchNotifications(): Promise<DashboardNotification[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/notifications`);
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    return [
+      {
+        title: 'Backend unavailable',
+        detail: 'Start the FastAPI service to load live notifications.',
+        level: 'warning',
+      },
+    ];
+  }
+}
+
+export async function fetchMessageQueue(limit: number = 5): Promise<MessageQueueItem[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/message-queue?limit=${limit}`);
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching message queue:', error);
+    return [];
+  }
+}
+
+export async function fetchGeoAnalytics(options: {
+  category?: string;
+  sentiment?: string;
+  platform?: string;
+  limit?: number;
+} = {}): Promise<GeoAnalytics | null> {
+  try {
+    const params = new URLSearchParams();
+    if (options.category && options.category !== 'all') params.append('category', options.category);
+    if (options.sentiment && options.sentiment !== 'all') params.append('sentiment', options.sentiment);
+    if (options.platform && options.platform !== 'all') params.append('platform', options.platform);
+    if (options.limit) params.append('limit', options.limit.toString());
+
+    const response = await fetch(`${API_BASE_URL}/geo-analytics?${params.toString()}`);
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching geo analytics:', error);
+    return null;
+  }
+}
+
+export async function fetchAnalyticsOverview(): Promise<AnalyticsOverview | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/analytics-overview`);
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching analytics overview:', error);
     return null;
   }
 }

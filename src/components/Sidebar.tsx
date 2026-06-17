@@ -30,6 +30,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ icon, label, path, active }) 
 const Sidebar = () => {
   const location = useLocation();
   const currentPath = location.pathname;
+  const currentHash = location.hash;
   
   return (
     <div className="hidden border-r bg-white lg:block">
@@ -43,7 +44,7 @@ const Sidebar = () => {
               icon={<BarChart3 className="h-5 w-5" />} 
               label="Dashboard" 
               path="/dashboard"
-              active={currentPath === '/dashboard'} 
+              active={currentPath === '/dashboard' && !currentHash} 
             />
             <SidebarItem 
               icon={<Map className="h-5 w-5" />} 
@@ -54,14 +55,14 @@ const Sidebar = () => {
             <SidebarItem 
               icon={<PieChart className="h-5 w-5" />} 
               label="Analytics" 
-              path="/dashboard" 
-              active={false}
+              path="/dashboard#cross-analytics" 
+              active={currentHash === '#cross-analytics'}
             />
             <SidebarItem 
               icon={<TrendingUp className="h-5 w-5" />} 
               label="Sentiment Trends" 
-              path="/dashboard" 
-              active={false}
+              path="/dashboard#trends" 
+              active={currentHash === '#trends'}
             />
           </div>
         </div>
@@ -73,14 +74,14 @@ const Sidebar = () => {
             <SidebarItem 
               icon={<Twitter className="h-5 w-5 text-blue-500" />} 
               label="Twitter Data" 
-              path="/dashboard" 
-              active={false}
+              path="/dashboard?source=Twitter#sources" 
+              active={location.search.includes('source=Twitter')}
             />
             <SidebarItem 
               icon={<Facebook className="h-5 w-5 text-blue-600" />} 
               label="Facebook Data" 
-              path="/dashboard" 
-              active={false}
+              path="/dashboard?source=Facebook#sources" 
+              active={location.search.includes('source=Facebook')}
             />
           </div>
         </div>
@@ -92,20 +93,20 @@ const Sidebar = () => {
             <SidebarItem 
               icon={<MessageSquare className="h-5 w-5" />} 
               label="Grievances" 
-              path="/dashboard" 
-              active={false}
+              path="/dashboard#live" 
+              active={currentHash === '#live'}
             />
             <SidebarItem 
               icon={<ListTodo className="h-5 w-5" />} 
               label="Tasks" 
-              path="/dashboard" 
-              active={false}
+              path="/dashboard#queue" 
+              active={currentHash === '#queue'}
             />
             <SidebarItem 
               icon={<Users className="h-5 w-5" />} 
               label="Users" 
-              path="/dashboard" 
-              active={false}
+              path="/dashboard#sources" 
+              active={currentHash === '#sources'}
             />
           </div>
         </div>

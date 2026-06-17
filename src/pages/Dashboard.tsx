@@ -1,5 +1,5 @@
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   BarChart3,
   MessageSquare,
@@ -18,17 +18,37 @@ import SentimentTrendChart from '@/components/dashboard/SentimentTrendChart';
 import SocialMediaSources from '@/components/dashboard/SocialMediaSources';
 import SocialCategoryChart from '@/components/dashboard/SocialCategoryChart';
 import LiveUpdates from '@/components/dashboard/LiveUpdates';
+import CivicAnalyticsOverview from '@/components/dashboard/CivicAnalyticsOverview';
 import { fetchDashboardSummary, fetchIngestionStatus, fetchSocialMediaPosts, SocialMediaPost } from '@/data/api';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useLocation, useSearchParams } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const searchTerm = searchParams.get('search') || '';
+  const sourceFilter = searchParams.get('source') || '';
+  const postsQueryKey = useMemo(
+    () => ['socialMediaPosts', searchTerm, sourceFilter],
+    [searchTerm, sourceFilter],
+  );
+
+  useEffect(() => {
+    if (!location.hash) return;
+    const target = document.querySelector(location.hash);
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [location.hash]);
   
   // Fetch social media posts
   const { data: socialMediaPosts, isLoading } = useQuery({
-    queryKey: ['socialMediaPosts'],
-    queryFn: () => fetchSocialMediaPosts({ limit: 50 }),
+    queryKey: postsQueryKey,
+    queryFn: () => fetchSocialMediaPosts({
+      limit: 50,
+      search: searchTerm || undefined,
+      platform: sourceFilter || undefined,
+    }),
     refetchInterval: 30000,
   });
 
@@ -50,9 +70,17 @@ const Dashboard: React.FC = () => {
     : 'Offline';
 
   const handleLivePosts = useCallback((posts: SocialMediaPost[]) => {
-    queryClient.setQueryData<SocialMediaPost[]>(['socialMediaPosts'], (current = []) => {
+    queryClient.setQueryData<SocialMediaPost[]>(postsQueryKey, (current = []) => {
       const existingIds = new Set(current.map((post) => String(post.id)));
-      const uniquePosts = posts.filter((post) => !existingIds.has(String(post.id)));
+      const uniquePosts = posts.filter((post) => {
+        const matchesSearch = searchTerm
+          ? [post.content, post.location, post.category, post.platform, post.sentiment]
+              .filter(Boolean)
+              .some((value) => String(value).toLowerCase().includes(searchTerm.toLowerCase()))
+          : true;
+        const matchesSource = sourceFilter ? post.platform === sourceFilter : true;
+        return matchesSearch && matchesSource && !existingIds.has(String(post.id));
+      });
       return [...uniquePosts, ...current].slice(0, 50);
     });
 
@@ -62,7 +90,10 @@ const Dashboard: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['sentimentBreakdown'] });
     queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
     queryClient.invalidateQueries({ queryKey: ['ingestionStatus'] });
-  }, [queryClient]);
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    queryClient.invalidateQueries({ queryKey: ['messageQueue'] });
+    queryClient.invalidateQueries({ queryKey: ['analyticsOverview'] });
+  }, [postsQueryKey, queryClient, searchTerm, sourceFilter]);
   
   // Refresh all data
   const handleRefresh = () => {
@@ -74,6 +105,9 @@ const Dashboard: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['sentimentBreakdown'] });
     queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
     queryClient.invalidateQueries({ queryKey: ['ingestionStatus'] });
+    queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    queryClient.invalidateQueries({ queryKey: ['messageQueue'] });
+    queryClient.invalidateQueries({ queryKey: ['analyticsOverview'] });
   };
   
   return (
@@ -84,6 +118,11 @@ const Dashboard: React.FC = () => {
           <p className="text-gray-500 mt-1">
             Monitor and analyze community grievances and social media sentiment in Tamil Nadu
           </p>
+          {(searchTerm || sourceFilter) && (
+            <p className="mt-2 text-sm text-city-blue">
+              Showing {sourceFilter || 'all sources'}{searchTerm ? ` matching "${searchTerm}"` : ''}
+            </p>
+          )}
         </div>
         <Button 
           onClick={handleRefresh} 
@@ -134,15 +173,25 @@ const Dashboard: React.FC = () => {
         />
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div id="queue" className="scroll-mt-24 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <TrendingIssues />
-        <LiveUpdates onPostsReceived={handleLivePosts} />
-        <SocialMediaSources />
+        <div id="live" className="scroll-mt-24">
+          <LiveUpdates onPostsReceived={handleLivePosts} />
+        </div>
+        <div id="sources" className="scroll-mt-24">
+          <SocialMediaSources />
+        </div>
       </div>
       
-      <SentimentTrendChart />
+      <div id="trends" className="scroll-mt-24">
+        <SentimentTrendChart />
+      </div>
+
+      <div id="cross-analytics" className="scroll-mt-24">
+        <CivicAnalyticsOverview />
+      </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div id="analytics" className="scroll-mt-24 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <CategoryChart />
         <SentimentChart />
         <SocialCategoryChart />
