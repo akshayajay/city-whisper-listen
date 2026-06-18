@@ -1,70 +1,66 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended",
-    ":dependencyDashboard",
-    ":semanticCommits"
-  ],
-  "labels": [
-    "dependencies"
-  ],
-  "prConcurrentLimit": 5,
-  "prHourlyLimit": 2,
-  "minimumReleaseAge": "3 days",
-  "rangeStrategy": "bump",
-  "lockFileMaintenance": {
-    "enabled": true,
-    "schedule": [
-      "before 6am on monday"
-    ]
-  },
+  "extends": ["config:base"],
+
+  "timezone": "Asia/Kolkata",
+  "schedule": ["every weekend"],
+
+  "automerge": true,
+  "automergeType": "pr",
+  "automergeStrategy": "squash",
+  "platformAutomerge": true,
+
   "packageRules": [
     {
-      "description": "Group low-risk frontend runtime updates",
-      "matchManagers": [
-        "npm"
-      ],
-      "matchDepTypes": [
-        "dependencies"
-      ],
-      "matchUpdateTypes": [
-        "minor",
-        "patch"
-      ],
-      "groupName": "frontend runtime dependencies"
+      "description": "Auto-merge security patches immediately, any day",
+      "matchUpdateTypes": ["patch", "minor"],
+      "matchCategories": ["security"],
+      "automerge": true,
+      "schedule": ["at any time"],
+      "labels": ["security", "automerge"]
     },
     {
-      "description": "Group low-risk frontend tooling updates",
-      "matchManagers": [
-        "npm"
-      ],
-      "matchDepTypes": [
-        "devDependencies"
-      ],
-      "matchUpdateTypes": [
-        "minor",
-        "patch"
-      ],
-      "groupName": "frontend tooling dependencies"
+      "description": "Auto-merge patch updates after CI passes",
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "labels": ["patch", "automerge"]
     },
     {
-      "description": "Group backend Python updates",
-      "matchManagers": [
-        "pip_requirements"
-      ],
-      "matchUpdateTypes": [
-        "minor",
-        "patch"
-      ],
-      "groupName": "backend Python dependencies"
+      "description": "Minor updates need a passing CI but automerge",
+      "matchUpdateTypes": ["minor"],
+      "automerge": true,
+      "labels": ["minor", "automerge"]
     },
     {
-      "description": "Keep major upgrades isolated for manual review",
-      "matchUpdateTypes": [
-        "major"
-      ],
-      "groupName": null,
-      "dependencyDashboardApproval": true
+      "description": "Major updates always require manual review",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["major", "needs-review"]
+    },
+    {
+      "description": "Pin GitHub Actions to digests for supply chain safety",
+      "matchManagers": ["github-actions"],
+      "automerge": true,
+      "matchUpdateTypes": ["patch", "minor"]
     }
+  ],
+
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "schedule": ["at any time"],
+    "automerge": true,
+    "labels": ["security", "vulnerability"]
+  },
+
+  "prConcurrentLimit": 3,
+  "prHourlyLimit": 2,
+  "minimumReleaseAge": "3 days",
+
+  "commitMessagePrefix": "chore(deps):",
+  "rebaseWhen": "conflicted",
+
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/__pycache__/**"
   ]
 }
