@@ -55,7 +55,7 @@ function archiveForm(html, month, year) {
   return body;
 }
 async function fetchText(fetcher, url, init = {}) {
-  const response = await fetcher(url, { ...init, redirect: 'error', signal: AbortSignal.timeout(25000), headers: { Accept: 'application/json, text/html', 'User-Agent': 'CityPulse/1.0 (+https://citypulse-listen.akshayajayakanth.chatgpt.site/sources)', ...init.headers } });
+  const response = await fetcher(url, { ...init, redirect: 'manual', signal: AbortSignal.timeout(25000), headers: { Accept: 'application/json, text/html', 'User-Agent': 'CityPulse/1.0 (+https://citypulse-listen.akshayajayakanth.chatgpt.site/sources)', ...init.headers } });
   return readLimited(response, 3_000_000);
 }
 export function parseMongabay(posts, now) {
@@ -104,7 +104,7 @@ async function collectGdeltFiles(now, previous, fetcher) {
   for (let offset = 0; offset < minutes.length; offset += 3) {
     const batch = await Promise.all(minutes.slice(offset, offset + 3).map(async t => {
       const stamp = new Date(t).toISOString().slice(0,16).replace(/[-:T]/g,'') + '00';
-      const response = await fetcher(`https://data.gdeltproject.org/gdeltv5/weblegacy/ngrams/${stamp}.toc.json.gz`, { redirect: 'error', signal: AbortSignal.timeout(15000) });
+      const response = await fetcher(`https://data.gdeltproject.org/gdeltv5/weblegacy/ngrams/${stamp}.toc.json.gz`, { redirect: 'manual', signal: AbortSignal.timeout(15000) });
       if (response.status === 404) return null; // The publisher documents sparse minute files.
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const text = await readLimited(new Response(response.body.pipeThrough(new DecompressionStream('gzip'))), 8_000_000);

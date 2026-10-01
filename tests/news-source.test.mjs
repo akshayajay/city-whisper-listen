@@ -21,7 +21,7 @@ test('independent reporting requires local civic focus, safe links and current p
 });
 test('backfill persists once; shared leases prevent duplicate work; cached archive and failures preserve data',async()=>{
  const db=database();let calls=0,archives=0;
- const fetcher=async(url,init)=>{calls++;if(url.includes('mongabay'))return new Response(JSON.stringify([post]));if(init.method==='POST'){archives++;return new Response(item());}return new Response(current);};
+ const fetcher=async(url,init)=>{assert.equal(init.redirect,'manual');calls++;if(url.includes('mongabay'))return new Response(JSON.stringify([post]));if(init.method==='POST'){archives++;return new Response(item());}return new Response(current);};
  try {
   const [first,concurrent]=await Promise.all([syncNews({DB:db},{now,fetcher,backfill:false,ids:['news-pib','news-mongabay']}),syncNews({DB:db},{now,fetcher,backfill:false,ids:['news-pib','news-mongabay']})]);
   assert.equal([...first.results,...concurrent.results].filter(r=>r.status==='cooldown').length,2);
