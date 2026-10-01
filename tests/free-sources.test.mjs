@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {database} from '../scripts/local-db.mjs';
-import {blueskyRecord,collectSource,parseGdelt,parseGdacs,parseHazards,readLimited,sampleBluesky,syncFreeSources,freeSourceStatus} from '../worker/free-sources.js';
+import {blueskyRecord,collectSource,parseGdelt,parseGdacs,parseHazards,readLimited,sampleBluesky,syncFreeSources,freeSourceStatus,openSocket} from '../worker/free-sources.js';
 import {insert,snapshot} from '../worker/store.js';
 const now = Date.now();
 const date = new Date(now).toISOString();
@@ -86,4 +86,19 @@ test('provider errors and oversized bodies are rejected; caller cannot select ar
   await assert.rejects(()=>readLimited(new Response('',{status:503})),/503/);
   await assert.rejects(()=>collectSource('https://example.com'),/Unknown source/);
   await assert.rejects(()=>collectSource('weather',{fetcher:async()=>response({})}),/Invalid conditions/);
+});
+test('Worker handshake timeout does not cut off an accepted stream before its sample ends',async()=>{
+  const previous=globalThis.WebSocketPair;
+  globalThis.WebSocketPair=class {};
+  let signal,accepted=false;
+  try{
+    const result=await openSocket(async(_url,options)=>{
+      signal=options.signal;
+      return {webSocket:{accept(){accepted=true}}};
+    },5);
+    await new Promise(resolve=>setTimeout(resolve,15));
+    assert.equal(accepted,true); assert.equal(result.opened,true); assert.equal(signal.aborted,false);
+  }finally{
+    if(previous===undefined)delete globalThis.WebSocketPair;else globalThis.WebSocketPair=previous;
+  }
 });

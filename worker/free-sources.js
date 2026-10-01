@@ -123,12 +123,19 @@ export async function blueskyRecord(event, now) {
   if (!date || now - Date.parse(date) > 7 * 86400000 || Date.parse(date) > now + 300000) return null;
   return { id, content: text.slice(0,3000), city: 'Chennai', area: 'Chennai mention · location unverified', category: civicCategory(text), sentiment: classify(text), source: 'Bluesky', demo: 0, created_at: date, received_at: new Date(now).toISOString(), source_url: `https://bsky.app/profile/${event.did}/post/${event.rkey}`, author_username: event.did, author_name: null };
 }
-async function openSocket(fetcher) {
+export async function openSocket(fetcher, connectTimeout = 10000) {
   if (typeof WebSocketPair !== 'undefined') {
-    const response = await fetcher(ENDPOINTS.bluesky, {headers:{Upgrade:'websocket','Sec-WebSocket-Protocol':'xrpc.v1.json'}, signal: AbortSignal.timeout(10000)});
-    if (!response.webSocket) throw new Error(`WebSocket HTTP ${response.status}`);
-    response.webSocket.accept();
-    return { socket: response.webSocket, opened: true };
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), connectTimeout);
+    try {
+      const response = await fetcher(ENDPOINTS.bluesky, {headers:{Upgrade:'websocket','Sec-WebSocket-Protocol':'xrpc.v1.json'}, signal: controller.signal});
+      if (!response.webSocket) throw new Error(`WebSocket HTTP ${response.status}`);
+      response.webSocket.accept();
+      return { socket: response.webSocket, opened: true };
+    } finally {
+      // The handshake deadline must not abort the accepted, longer-lived sample.
+      clearTimeout(timer);
+    }
   }
   return { socket: new WebSocket(ENDPOINTS.bluesky.replace('https:', 'wss:'), 'xrpc.v1.json'), opened: false };
 }
