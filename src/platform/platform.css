@@ -1830,3 +1830,17 @@ h1 {
     transition: none !important;
   }
 }
+
+.post-author { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12px; color: #626579; margin: 6px 0; }
+.post-author img { border-radius: 50%; }
+.post-link { display: inline-flex; gap: 4px; align-items: center; color: #6550bd; font-size: 12px; font-weight: 600; }
+.chennai-source-strip { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; padding: 13px 18px; margin: -8px 0 20px; background: #fff; border: 1px solid #e7e8ef; border-radius: 12px; font-size: 12px; }
+.chennai-source-strip > div { flex: 1; display: flex; gap: 12px; flex-wrap: wrap; }
+.chennai-source-strip span { color: #767382; }
+.chennai-source-strip a { display: flex; align-items: center; gap: 3px; color: #6550bd; font-weight: 600; }
+.x-logo { background: #16161e; color: white; font-size: 26px; }
+.source-row .source-detail { font-size: 12px; margin: 10px 0; }
+
+.x-post { margin: 10px 0; }
+.x-post iframe { width: 100%; height: 470px; border: 0; background: white; border-radius: 10px; }
+.x-post small { display: block; color: #767382; font-size: 11px; margin: 7px 0; line-height: 1.5; }

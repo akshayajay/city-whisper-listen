@@ -8,8 +8,8 @@ export const rows = async (db, sql, args = []) =>
 export function insert(db, event) {
   return db
     .prepare(
-      `INSERT INTO events (id, content, city, area, category, sentiment, source, demo, created_at, received_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING`,
+      `INSERT INTO events (id, content, city, area, category, sentiment, source, demo, created_at, received_at, source_url, author_username, author_name, author_avatar)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING`,
     )
     .bind(
       event.id,
@@ -22,12 +22,16 @@ export function insert(db, event) {
       event.demo,
       event.created_at,
       event.received_at,
+      event.source_url || null,
+      event.author_username || null,
+      event.author_name || null,
+      event.author_avatar || null,
     );
 }
 export function filters(url) {
   const args = [url.searchParams.get("mode") === "demo" ? 1 : 0];
   const clauses = ["demo = ?"];
-  for (const name of ["city", "category", "sentiment"]) {
+  for (const name of ["city", "category", "sentiment", "source"]) {
     const value = url.searchParams.get(name);
     if (value && value !== "all") {
       clauses.push(`${name} = ?`);

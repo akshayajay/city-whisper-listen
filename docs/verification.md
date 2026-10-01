@@ -22,3 +22,10 @@ Local browser verification also exercised the responsive dashboard, navigation, 
 Production dependencies were checked with `npm audit --omit=dev` and had no reported advisories at verification. The migration tooling has a moderate advisory in a transitive legacy esbuild development server; that tool is not bundled into the Worker or used to serve the deployed app. The migration CLI is used only to generate SQL locally.
 
 The retained Python prototype has its own existing CI job and is not the deployed API. Local platform test results do not imply a new run of that prototype or a load test of the public service.
+
+## Chennai X integration update
+
+- `npm test`: 17 passed, including X ingestion fixture tests for source separation, attribution, deduplication, concurrency, budget reservations, failure recovery and owner-only removal.
+- TypeScript check, production build and `git diff --check` passed. ESLint has no errors and the same six existing UI refresh warnings.
+- Local browser: opened the Chennai X filter, submitted an explicitly labeled local citizen test report, and confirmed the saved-report acknowledgment and automatic switch to `source=Citizen+report`. No test report was submitted to production.
+- X developer app setup and secret storage are separate from API access verification. Fixture tests do not prove live retrieval. Paid collection stays disabled pending credits and explicit test approval.

@@ -42,6 +42,7 @@ import {
 } from "recharts";
 import SignalMap from "./platform/SignalMap";
 import ReportDialog from "./platform/ReportDialog";
+import XPost from "./platform/XPost";
 import {
   api,
   categories,
@@ -49,13 +50,14 @@ import {
   CivicEvent,
   Mode,
   Snapshot,
+  SourceStatus,
 } from "./platform/types";
 import "./platform/platform.css";
 const nav = [
   { path: "/dashboard", name: "Overview", icon: Layers3 },
   { path: "/map", name: "Signal map", icon: MapPin },
   { path: "/analytics", name: "Analytics", icon: BarChart3 },
-  { path: "/reports", name: "Citizen reports", icon: MessageSquare },
+  { path: "/reports", name: "Signal feed", icon: MessageSquare },
   { path: "/sources", name: "Data sources", icon: Radio },
 ];
 const time = (value: string) =>
@@ -92,13 +94,22 @@ function EventList({
                 {time(event.created_at)}
               </time>
             </div>
-            <p>{event.content}</p>
+            {event.source === "X" && event.author_username && (
+              <a className="post-author" href={`https://x.com/${event.author_username}`} target="_blank" rel="noopener noreferrer">
+                {event.author_avatar && <img src={event.author_avatar} alt="" width={24} height={24} loading="lazy" referrerPolicy="no-referrer" />}
+                <strong>{event.author_name}</strong> @{event.author_username}
+              </a>
+            )}
+            {event.source === "X" ? <XPost event={event} /> : <p>{event.content}</p>}
             <div className="event-tags">
               <span className="category-tag">{event.category}</span>
               <span className={`sentiment ${event.sentiment}`}>
                 {event.sentiment}
               </span>
-              <small>{event.demo ? "Simulated event" : "Citizen report"}</small>
+              <small>{event.demo ? "Simulated event" : event.source === "X" ? "X · Chennai mention" : "Citizen report"}</small>
+              {event.source === "X" && event.source_url && (
+                <a href={event.source_url} target="_blank" rel="noopener noreferrer" className="post-link">View on X <ArrowUpRight size={12} /></a>
+              )}
             </div>
           </div>
         </article>
@@ -118,11 +129,13 @@ function Platform() {
   const mode: Mode = params.get("mode") === "live" ? "live" : "demo";
   const city = params.get("city") || "all",
     category = params.get("category") || "all",
+    source = params.get("source") || "all",
     sentiment = params.get("sentiment") || "all",
     hours = params.get("hours") || "24",
     q = params.get("q") || "";
   const [search, setSearch] = useState(q);
   const [data, setData] = useState<Snapshot | null>(null);
+  const [sources, setSources] = useState<SourceStatus | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [connection, setConnection] = useState<
@@ -142,11 +155,12 @@ function Platform() {
         mode,
         city,
         category,
+        source: mode === "live" ? source : "all",
         sentiment,
         hours,
         q,
       }).toString(),
-    [mode, city, category, sentiment, hours, q],
+    [mode, city, category, source, sentiment, hours, q],
   );
   const update = useCallback(
     (key: string, value: string) => {
@@ -184,6 +198,13 @@ function Platform() {
       pendingRequests.current++;
     };
   }, [refresh]);
+  useEffect(() => {
+    let active = true;
+    const load = () => void api<SourceStatus>("/api/sources").then(next => { if (active) setSources(next); }).catch(() => { if (active) setSources(null); });
+    load();
+    const timer = setInterval(load, 30000);
+    return () => { active = false; clearInterval(timer); };
+  }, []);
   useEffect(() => {
     setSearch(q);
   }, [q]);
@@ -243,7 +264,7 @@ function Platform() {
     isSources = route === "/sources",
     isAnalytics = route === "/analytics";
   const activeFilters =
-    city !== "all" || category !== "all" || sentiment !== "all" || !!q;
+    city !== "all" || category !== "all" || sentiment !== "all" || (mode === "live" && source !== "all") || !!q;
   const summary = data?.summary;
   const total = summary?.total || 0;
   const negativeShare = total
@@ -261,7 +282,7 @@ function Platform() {
   const href = (path: string) => `${path}?${params.toString()}`;
   const reset = () => setParams({ mode, hours });
   const onSaved = (event: CivicEvent) => {
-    setParams({ mode: "live", hours: "24" });
+    setParams({ mode: "live", hours: "24", source: "Citizen report" });
     setNotice(
       `Report ${event.id.slice(0, 8)} saved. You’re now viewing real citizen reports.`,
     );
@@ -421,12 +442,12 @@ function Platform() {
                 <strong>
                   {mode === "demo"
                     ? "You’re exploring the demo workspace"
-                    : "Real voices. Live citizen reports."}
+                    : "Real voices. Chennai signals."}
                 </strong>
                 <span>
                   {mode === "demo"
                     ? "Simulated civic signals arrive every 5 seconds. They never enter your live dataset."
-                    : "Only submitted citizen reports appear here. New reports flow into every connected dashboard."}
+                    : "Citizen reports appear immediately. Chennai posts from X join this feed when the source is connected."}
                 </span>
               </div>
             </div>
@@ -457,6 +478,13 @@ function Platform() {
               </div>
             </div>
           </div>
+          {mode === "live" && (
+            <div className="chennai-source-strip">
+              <div><strong>X · Chennai civic signals</strong><span>{sources?.x.status || "Source status unavailable"}</span></div>
+              <Link to="/sources?mode=live">Source details <ArrowUpRight size={14} /></Link>
+              <Link to="/dashboard?mode=live&city=Chennai">Explore Chennai <ArrowUpRight size={14} /></Link>
+            </div>
+          )}
           {notice && (
             <div className="notice" role="status">
               <Check size={16} />
@@ -522,6 +550,11 @@ function Platform() {
                     <option key={c}>{c}</option>
                   ))}
                 </select>
+                {mode === "live" && <select aria-label="Filter source" value={source} onChange={e => update("source", e.target.value)}>
+                  <option value="all">All live sources</option>
+                  <option value="Citizen report">Citizen reports</option>
+                  <option value="X">X · Chennai</option>
+                </select>}
                 {activeFilters && (
                   <button className="text-button clear" onClick={reset}>
                     <X size={13} />
@@ -600,9 +633,21 @@ function Platform() {
                     {mode === "demo" && !paused ? "Generating" : "Standby"}
                   </span>
                 </div>
+                <div className="source-row">
+                  <div className="source-logo x-logo" aria-hidden="true">𝕏</div>
+                  <div>
+                    <h3>X · Chennai civic signals</h3>
+                    <p>Public posts mentioning Chennai or சென்னை and civic issues. A sample of up to 10 recent posts per sync, with reposts excluded. These are city mentions, not verified locations.</p>
+                    <span className="source-badge">Live dataset · separate source filter</span>
+                    <p className="source-detail">{sources?.x.lastSuccess ? `Last successful sync: ${new Date(sources.x.lastSuccess).toLocaleString()}` : "No posts have been collected yet."}</p>
+                    {sources?.x.lastError && <p className="source-detail">{sources.x.lastError}</p>}
+                    <p className="source-detail">{sources?.x.ready ? `Owner-run collection, at most once every 15 minutes. ${sources.x.reservedPosts} / ${sources.x.dailyPostLimit} daily post-read slots reserved.` : sources?.x.status === "Paused" ? "API credentials are saved. Collection is paused until a read limit is approved and enabled." : "Collection is waiting for the owner to connect X API access and approve a read limit."}</p>
+                    <Link className="post-link" to="/reports?mode=live&city=Chennai&source=X">Browse Chennai posts <ArrowUpRight size={14} /></Link>
+                  </div>
+                  <span className="source-status">{sources?.x.status || "Unavailable"}</span>
+                </div>
                 <div className="source-footnote">
-                  X and Facebook are not connected. No social media collection
-                  or municipal integration is claimed.
+                  Citizen reporting works independently of X. Facebook and municipal systems are not connected. X collection is a bounded sample and may miss posts between syncs; it is not a measure of all Chennai residents’ opinions.
                 </div>
               </section>
               <section className="panel methodology">
@@ -624,7 +669,7 @@ function Platform() {
                     Sentiment uses a small English keyword heuristic, not a
                     trained ML model. Negative keywords take precedence;
                     unmatched text is neutral. Labels may be wrong. Categories
-                    are chosen by the reporter.
+                    are chosen by the reporter. X categories use simple English and Tamil issue keywords; Tamil sentiment is not modeled.
                   </p>
                   <h3>
                     03 <span>Update together</span>
@@ -640,7 +685,7 @@ function Platform() {
                   <p>
                     This project does not dispatch reports or track official
                     resolution. City locations are approximate. The feed shows
-                    the newest 100 matching reports; exports include up to
+                    the newest 100 matching signals. X posts are retained for seven days and removed on the next sync; exports include up to
                     10,000.
                   </p>
                 </div>
@@ -736,7 +781,7 @@ function Platform() {
                   <div className="panel-heading">
                     <div>
                       <h2>
-                        {mode === "demo" ? "Demo reports" : "Citizen reports"}
+                        {mode === "demo" ? "Demo reports" : "Live signals"}
                       </h2>
                       <p>
                         Newest 100 matching records. All matching records count
@@ -946,7 +991,7 @@ function Platform() {
                       <div className="chart-footer">
                         <span>
                           Based on {number(total)}{" "}
-                          {mode === "demo" ? "simulated" : "citizen"} signals
+                          {mode === "demo" ? "simulated" : "live"} signals
                         </span>
                         <span>
                           Keyword sentiment ·{" "}
@@ -1125,7 +1170,7 @@ function Platform() {
                 ? `Stream checked ${time(heartbeat)}`
                 : "Waiting for stream"}
               <span>·</span>
-              {mode === "demo" ? "Simulated data" : "Citizen-submitted data"}
+              {mode === "demo" ? "Simulated data" : "Citizen reports + connected sources"}
             </span>
           </footer>
         </main>

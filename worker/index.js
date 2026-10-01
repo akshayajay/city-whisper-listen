@@ -1,3 +1,4 @@
+import { authorizedX, syncX, xStatus } from "./x-source.js";
 import { allowReport } from "./rate-limit.js";
 import {
   cities,
@@ -136,6 +137,21 @@ export default {
         if (origin && origin !== url.origin)
           return json({ error: "Cross-origin writes are not allowed." }, 403);
       }
+      if (path === "/api/sources" && request.method === "GET")
+        return json({ x: await xStatus(env) });
+      if (path === "/api/sources/x/sync" && request.method === "POST") {
+        if (!(await authorizedX(request, env))) return json({ error: "Owner ingestion authorization required." }, 401);
+        const result = await syncX(env);
+        return json(result.body, result.status);
+      }
+      if (path === "/api/sources/x/remove" && request.method === "POST") {
+        if (!(await authorizedX(request, env))) return json({ error: "Owner ingestion authorization required." }, 401);
+        const body = await readBody(request);
+        if (!Array.isArray(body.ids) || !body.ids.length || body.ids.length > 100 || body.ids.some(id => typeof id !== "string" || !/^\d{1,30}$/.test(id)))
+          return json({ error: "Supply 1 to 100 X post IDs as strings." }, 400);
+        const result = await env.DB.batch(body.ids.map(id => env.DB.prepare("DELETE FROM events WHERE source = 'X' AND id = ?").bind(`x-${id}`)));
+        return json({ removed: result.reduce((sum, row) => sum + Number(row.meta?.changes || 0), 0) });
+      }
       if (path === "/api/health" && request.method === "GET") {
         await env.DB.prepare("SELECT 1 FROM events LIMIT 1").all();
         return json({
@@ -187,7 +203,7 @@ export default {
           ["content", "city", "area", "category"].some(
             (key) => saved[key] !== body[key],
           ) ||
-          saved.demo !== 0
+          saved.demo !== 0 || saved.source !== "Citizen report"
         )
           return json(
             {
@@ -244,11 +260,14 @@ export default {
           "category",
           "sentiment",
           "source",
+          "source_url",
+          "author_username",
           "content",
         ];
         const csv = [
           columns.join(","),
-          ...data.map((row) => columns.map((k) => csvCell(row[k])).join(",")),
+          // X content exports contain references only; citizen text remains exportable.
+          ...data.map((row) => columns.map((k) => csvCell(row.source === "X" && ["content", "author_username"].includes(k) ? "" : row[k])).join(",")),
         ].join("\r\n");
         return new Response(csv, {
           headers: {

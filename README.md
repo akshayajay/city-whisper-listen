@@ -8,7 +8,7 @@ A working civic analytics platform for Tamil Nadu: submit a report, watch it arr
 - **Streaming updates:** server-sent events announce new records; clients reconnect with a cursor and refresh analytics. A 15-second fallback refresh recovers missed updates.
 - **Honest demo mode:** synthetic events arrive every five seconds while a demo workspace is open. Demo records are stored separately from citizen reports and expire after 24 hours. Pausing stops that browser's generator; another viewer can still generate shared demo events.
 - **Connected analytics:** city, category, sentiment, search, and time-window filters apply to the feed, totals, charts, map, and export. Database batches keep panel totals consistent.
-- **Functional navigation:** overview, signal map, analytics, citizen reports, and data sources are real routes, including direct page loads.
+- **Functional navigation:** overview, signal map, analytics, signal feed, and data sources are real routes, including direct page loads.
 - **Responsive interface:** mobile navigation, accessible report dialog, explicit loading/error/empty states, and keyboard-selectable city markers.
 
 ## Run locally
@@ -26,9 +26,9 @@ In another terminal:
 npm run dev
 ```
 
-Open [the local dashboard](http://localhost:8080/dashboard). Vite proxies `/api` to the API on port 8787. Local records survive restarts in the ignored `.data/citypulse.sqlite` file. No social API keys or OpenAI key are required.
+Open [the local dashboard](http://localhost:8080/dashboard). Vite proxies `/api` to the API on port 8787. Local records survive restarts in the ignored `.data/citypulse.sqlite` file. Citizen reports and demo mode need no API keys. X ingestion needs separate approved API access; see [X setup](docs/x-integration.md).
 
-The default view is explicitly labeled **Demo**. Choose **Live** to view only real citizen submissions. The report form always saves to Live and switches to that dataset after success.
+The default view is explicitly labeled **Demo**. Choose **Live** to view citizen submissions and imported X posts, with a source filter to separate them. The report form always saves to Live and switches to that dataset after success.
 
 ## Checks
 
@@ -73,10 +73,18 @@ Snapshot and export accept `mode=live|demo`, `city`, `category`, `sentiment`, `q
 - Sentiment is an **English keyword heuristic**, not a trained ML model or validated measure of public opinion. Negative keywords take precedence; unmatched text is neutral. Tamil and other languages can be submitted but are not reliably classified.
 - Categories are selected by reporters. Demo sentiments and categories are predetermined examples.
 - The map uses city centroids, not exact incident locations. Signal volume is not population-normalized.
-- X/Facebook are **not connected**. The platform does not scrape social media, forward reports to government, or claim official resolution.
+- X has an optional, owner-authorized Chennai recent-search integration with bounded sampling and explicit source status. It stays disabled until credentials and a read limit are configured. Facebook is not connected. The platform does not scrape social media, forward reports to government, or claim official resolution.
 - Reports are public on the live site. Do not submit personal details. The independent project is not an emergency service.
 - The current deployment is intended for a small shared workspace. Report intake is limited to 10 new submissions per client per 10-minute window using rotating hashed network identifiers. High-volume rollout would still need moderation, stronger abuse controls, and operational monitoring.
 
 ## Hosted platform
 
 [Open CityPulse](https://citypulse-listen.akshayajayakanth.chatgpt.site) — a public workspace with separate Live and Demo datasets.
+
+### Chennai X integration
+
+The optional collector reads up to 10 recent civic posts per 15-minute interval, persists attribution and original links, and uses the same live analytics and SSE as citizen reports. Chennai keyword matches are not verified locations. The source page displays actual configuration, successful-sync time, errors and read-limit status. See [setup, limits and operation](docs/x-integration.md).
+
+- `GET /api/sources`: public source status; no secrets.
+- `POST /api/sources/x/sync`: owner ingestion token required, disabled by default.
+- `source=X` or `source=Citizen%20report`: consistent filters across feed, charts and CSV.

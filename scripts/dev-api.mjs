@@ -28,6 +28,10 @@ createServer(async (req, res) => {
   try {
     const response = await worker.fetch(request, {
       DB: db,
+      X_ENABLED: process.env.X_ENABLED,
+      X_BEARER_TOKEN: process.env.X_BEARER_TOKEN,
+      X_INGEST_TOKEN: process.env.X_INGEST_TOKEN,
+      X_DAILY_POST_LIMIT: process.env.X_DAILY_POST_LIMIT,
       CLIENT_IP: req.socket.remoteAddress,
     });
     res.writeHead(response.status, Object.fromEntries(response.headers));

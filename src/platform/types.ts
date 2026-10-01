@@ -9,6 +9,10 @@ export interface CivicEvent {
   category: string;
   sentiment: Sentiment;
   source: string;
+  source_url: string | null;
+  author_username: string | null;
+  author_name: string | null;
+  author_avatar: string | null;
   demo: number;
   created_at: string;
   received_at: string;
@@ -66,4 +70,9 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
     );
   }
   return response.json();
+}
+
+export interface SourceStatus {
+  x: { status: string; ready: boolean; query: string; lastSuccess: string | null; lastError: string | null;
+    cadenceMinutes: number; dailyPostLimit: number; reservedPosts: number; sampled: boolean };
 }
