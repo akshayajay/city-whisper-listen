@@ -4,8 +4,8 @@ import { FreeSource } from './types';
 const stamp = (date?: string | null) => date ? new Date(date).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : 'Not collected yet';
 export function FreeSourcePanel({ sources, syncing, onSync }: { sources: FreeSource[]; syncing: boolean; onSync: () => void }) {
   return <section className="panel free-sources-panel">
-    <div className="panel-heading"><div><h2>Open data, connected</h2><p>Seven free feeds · independent health checks</p></div><button className="secondary" onClick={onSync} disabled={syncing}><RefreshCw size={14} className={syncing ? 'spin' : ''}/>{syncing ? 'Collecting…' : 'Check feeds'}</button></div>
-    <div className="collector-explainer">Feeds refresh when a live workspace is open. Each provider has a shared cooldown across all viewers. Bluesky uses short samples; the other feeds are polled. No paid X calls are made.</div>
+    <div className="panel-heading"><div><h2>Open data, connected</h2><p>{sources.length || 7} open feeds · independent health checks</p></div><button className="secondary" onClick={onSync} disabled={syncing}><RefreshCw size={14} className={syncing ? 'spin' : ''}/>{syncing ? 'Collecting…' : 'Check feeds'}</button></div>
+    <div className="collector-explainer">These additional feeds refresh when a live workspace is open. The separate news collector supports background updates. Each provider has a shared cooldown across all viewers. Bluesky uses short samples; the other feeds are polled. No paid X calls are made.</div>
     {!sources.length && <p className="collector-explainer">Source status is unavailable. Citizen reporting remains independent.</p>}
     {sources.map(source => <div className="source-row free-source-row" key={source.id}>
       <div className="source-logo"><Activity size={20}/></div>

@@ -1,3 +1,4 @@
+import { authorizedNews, syncNews, newsStatus } from './news-source.js';
 import { syncFreeSources, freeSourceStatus } from "./free-sources.js";
 import { authorizedX, syncX, xStatus } from "./x-source.js";
 import { allowReport } from "./rate-limit.js";
@@ -137,6 +138,12 @@ export default {
         const origin = request.headers.get("origin");
         if (origin && origin !== url.origin)
           return json({ error: "Cross-origin writes are not allowed." }, 403);
+      }
+      if (path === "/api/news" && request.method === "GET") return json(await newsStatus(env));
+      if (path === "/api/news/sync" && request.method === "POST") {
+        if (!(await authorizedNews(request, env))) return json({ error: "News ingestion authorization required." }, 401);
+        const result = await syncNews(env);
+        return json(result, result.results.some(r => r.status === 'error') ? 502 : 200);
       }
       if (path === "/api/sources" && request.method === "GET")
         return json({ x: await xStatus(env), free: await freeSourceStatus(env.DB) });

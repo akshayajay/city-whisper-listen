@@ -8,8 +8,8 @@ export const rows = async (db, sql, args = []) =>
 export function insert(db, event) {
   return db
     .prepare(
-      `INSERT INTO events (id, content, city, area, category, sentiment, source, demo, created_at, received_at, source_url, author_username, author_name, author_avatar)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING`,
+      `INSERT INTO events (id, content, city, area, category, sentiment, source, demo, created_at, received_at, source_url, author_username, author_name, author_avatar, news_meta)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING`,
     )
     .bind(
       event.id,
@@ -26,6 +26,7 @@ export function insert(db, event) {
       event.author_username || null,
       event.author_name || null,
       event.author_avatar || null,
+      event.news_meta || null,
     );
 }
 export function filters(url) {

@@ -1,3 +1,4 @@
+import { NewsPulse } from './platform/NewsPulse';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BrowserRouter,
@@ -66,6 +67,7 @@ const time = (value: string) =>
     hour: "2-digit",
     minute: "2-digit",
   });
+const isBackfill = (event: CivicEvent) => { try { return !!JSON.parse(event.news_meta || "{}").initialBackfill; } catch { return false; } };
 const number = (n = 0) => n.toLocaleString();
 function EventList({
   events,
@@ -92,7 +94,7 @@ function EventList({
                 dateTime={event.created_at}
                 title={new Date(event.created_at).toLocaleString()}
               >
-                {time(event.created_at)}
+                {event.news_meta ? new Date(event.created_at).toLocaleDateString([], {month:"short",day:"numeric",year:"numeric",timeZone:"Asia/Kolkata"}) : time(event.created_at)}
               </time>
             </div>
             {event.source === "X" && event.author_username && (
@@ -102,6 +104,7 @@ function EventList({
               </a>
             )}
             {event.source === "X" ? <XPost event={event} /> : <p>{event.content}</p>}
+            {event.news_meta && <small className="news-attribution">{isBackfill(event) ? "Archive backfill · " : ""}{event.source === 'PIB Chennai' ? 'Official release · Press Information Bureau' : event.source === 'GDELT headlines' ? `News index · ${event.author_name}` : `Independent reporting · ${event.author_name || event.source}`} · {event.source === 'GDELT headlines' ? 'Indexed date; publication date unverified' : 'Published date, not incident date'} · Topic inferred from text</small>}
             <div className="event-tags">
               <span className="category-tag">{event.category}</span>
               {event.sentiment !== "unscored" && <span className={`sentiment ${event.sentiment}`}>{event.sentiment}</span>}
@@ -130,7 +133,7 @@ function Platform() {
     category = params.get("category") || "all",
     source = params.get("source") || "all",
     sentiment = params.get("sentiment") || "all",
-    hours = params.get("hours") || "24",
+    hours = params.get("hours") || (mode === "live" ? "720" : "24"),
     q = params.get("q") || "";
   const [search, setSearch] = useState(q);
   const [data, setData] = useState<Snapshot | null>(null);
@@ -410,7 +413,7 @@ function Platform() {
               {error
                 ? "Data unavailable"
                 : connection === "connected"
-                  ? "Stream connected"
+                  ? "Dashboard connected"
                   : connection === "connecting"
                     ? "Connecting…"
                     : "Reconnecting…"}
@@ -498,7 +501,7 @@ function Platform() {
           </div>
           {mode === "live" && (
             <div className="chennai-source-strip">
-              <div><strong>Chennai · open civic data</strong><span>{sources?.free?.filter(s => s.status === "Connected").length || 0} / 7 free feeds checked · X {sources?.x.status || "status unavailable"}</span></div>
+              <div><strong>Chennai · open civic data</strong><span>{sources?.free?.filter(s => s.status === "Connected").length || 0} / {sources?.free?.length || 7} open feeds checked · X {sources?.x.status || "status unavailable"}</span></div>
               <Link to="/sources?mode=live">Source details <ArrowUpRight size={14} /></Link>
               <Link to="/dashboard?mode=live&city=Chennai">Explore Chennai <ArrowUpRight size={14} /></Link>
             </div>
@@ -572,6 +575,9 @@ function Platform() {
                   <option value="all">All live sources</option>
                   <option value="Citizen report">Citizen reports</option>
                   <option value="Bluesky">Bluesky · Chennai</option>
+                  <option value="GDELT headlines">GDELT · Indexed headlines</option>
+                  <option value="PIB Chennai">PIB Chennai · Official releases</option>
+                  <option value="Mongabay India">Mongabay India · News</option>
                   <option value="GDELT news">GDELT · Civic news</option>
                   <option value="X">X · Chennai</option>
                 </select>}
@@ -610,6 +616,7 @@ function Platform() {
             </div>
           ) : isSources ? (
             <div className="sources-layout">
+              <NewsPulse detailed />
               <FreeSourcePanel sources={sources?.free || []} syncing={syncing} onSync={() => void syncFree()} />
               <section className="panel">
                 <div className="panel-heading">
@@ -714,6 +721,7 @@ function Platform() {
             </div>
           ) : (
             <>
+              {mode === "live" && !isMap && (city === "all" || city === "Chennai") && <NewsPulse detailed={isReports} />}
               {mode === "live" && !isReports && !isMap && (city === "all" || city === "Chennai") && <CityConditions sources={sources?.free || []} />}
               <div className="stat-grid">
                 <article className="stat-card">

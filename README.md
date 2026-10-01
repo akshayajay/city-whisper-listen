@@ -29,7 +29,7 @@ npm run dev
 
 Open [the local dashboard](http://localhost:8080/dashboard). Vite proxies `/api` to the API on port 8787. Local records survive restarts in the ignored `.data/citypulse.sqlite` file. Citizen reports and demo mode need no API keys. X ingestion needs separate approved API access; see [X setup](docs/x-integration.md).
 
-The default view is explicitly labeled **Demo**. Choose **Live** to view citizen submissions, matching Bluesky posts and civic headlines, with source filters. Chennai weather, air quality and regional hazards have separate context panels. The report form always saves to Live and switches to that dataset after success. Free feeds refresh while a visible Live workspace is open; this is not an always-on background collector. X remains paused on the public deployment.
+The default view is explicitly labeled **Demo**. Choose **Live** to view citizen submissions, matching Bluesky posts and civic headlines, with source filters. Chennai weather, air quality and regional hazards have separate context panels. The report form always saves to Live and switches to that dataset after success. Additional environmental/social feeds refresh while a visible Live workspace is open. The separate news pipeline has an authenticated writer for a hosted 15-minute background task; see [news ingestion](docs/news-ingestion.md). Live defaults to a 30-day window and Demo to 24 hours. X remains paused on the public deployment.
 
 ## Checks
 
@@ -67,6 +67,8 @@ The older Python prototype is retained in [`backend/`](backend/) for reference. 
 | POST   | `/api/demo`     | Add duplicate-safe simulated events                       |
 | GET    | `/api/sources`  | Provider status, timestamps and environmental history      |
 | POST   | `/api/sources/sync` | Collect due free feeds, with shared provider cooldowns |
+| GET    | `/api/news` | Saved news analysis and publisher collection status |
+| POST   | `/api/news/sync` | Authenticated background news collection; independent of browser polling |
 | GET    | `/api/export`   | Export up to 10,000 matching records as CSV               |
 
 Snapshot and export accept `mode=live|demo`, `city`, `category`, `sentiment`, `q`, and `hours=1|24|168|720`. Timestamps are UTC in storage; hourly chart labels and feed times use the browser's timezone. Calendar-day chart buckets are UTC. Search matches literal text in report content and neighborhood. The stream accepts `mode` and `cursor`, or the standard `Last-Event-ID` header.

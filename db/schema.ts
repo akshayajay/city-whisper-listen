@@ -14,6 +14,7 @@ export const events = sqliteTable(
     authorUsername: text("author_username"),
     authorName: text("author_name"),
     authorAvatar: text("author_avatar"),
+    newsMeta: text("news_meta"),
     demo: integer("demo").notNull().default(0),
     createdAt: text("created_at").notNull(),
     receivedAt: text("received_at").notNull(),

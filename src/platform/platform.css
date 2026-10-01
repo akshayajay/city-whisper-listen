@@ -1880,3 +1880,26 @@ h1 {
 .event-symbol.unscored { background:#edf2fa; color:#6a83a9; }
 @media(max-width:1200px) { .context-grid { grid-template-columns:1fr 1fr; } .regional-card {grid-column:1/-1;} }
 @media(max-width:680px) { .context-grid { grid-template-columns:1fr; } .context-heading { display:block; } .context-heading p {margin-top:10px;} .free-source-row .source-health {white-space:normal;} }
+
+.news-pulse { margin-bottom:24px; overflow:hidden; }
+.news-eyebrow { display:flex; align-items:center; gap:7px; font-size:10px; font-weight:700; letter-spacing:1.8px; color:#7762ce; margin-bottom:10px; }
+.news-metrics { display:grid; grid-template-columns:repeat(4,1fr); padding:4px 24px 18px; gap:18px; }
+.news-metrics>div { display:flex; flex-direction:column; gap:5px; }
+.news-metrics strong { font-size:28px; color:#312c48; letter-spacing:-1px; }
+.news-metrics strong.news-date { font-size:16px; letter-spacing:0; padding-top:10px; }
+.news-metrics span { font-size:11px; color:#817b94; }
+.news-topics { display:flex; flex-wrap:wrap; gap:8px; padding:0 24px 12px; }
+.news-topics b { margin-left:6px; }
+.news-source-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; padding:0 24px 22px; }
+.news-source-grid article { background:#f9f8fc; padding:16px; border:1px solid #eeeaf5; border-radius:12px; }
+.news-source-grid article>div { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.news-source-grid strong { font-size:13px; }
+.news-source-grid small,.news-source-grid p { color:#827b95; font-size:11px; line-height:1.8; }
+.news-source-grid p { margin:10px 0; }
+.news-attribution { display:block; color:#817a91; font-size:10px; line-height:1.7; margin:0 0 8px; }
+.news-coverage { padding:0 24px 20px; }
+.news-coverage details { border-top:1px solid #eeeaf5; padding:12px 0; font-size:12px; }
+.news-coverage summary { cursor:pointer; line-height:1.6; }
+.news-coverage summary span { display:block; color:#898099; font-size:10px; margin-left:16px; }
+.news-coverage a { display:block; margin:10px 16px; color:#7762ce; }
+@media(max-width:700px) { .news-metrics { grid-template-columns:1fr 1fr; } .news-source-grid { grid-template-columns:1fr; } .news-pulse .panel-heading { flex-wrap:wrap; gap:12px; } }

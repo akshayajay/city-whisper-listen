@@ -69,6 +69,7 @@ const server = createServer(async (req, res) => {
   try {
     const response = await worker.fetch(request, {
       DB: db,
+      NEWS_INGEST_TOKEN_SHA256: process.env.NEWS_INGEST_TOKEN_SHA256,
       X_ENABLED: process.env.X_ENABLED,
       X_BEARER_TOKEN: process.env.X_BEARER_TOKEN,
       X_INGEST_TOKEN: process.env.X_INGEST_TOKEN,

@@ -10,6 +10,7 @@ export interface CivicEvent {
   sentiment: Sentiment;
   source: string;
   source_url: string | null;
+  news_meta: string | null;
   author_username: string | null;
   author_name: string | null;
   author_avatar: string | null;
