@@ -1,3 +1,5 @@
+> **Legacy prototype:** This Python backend is retained for reference. The current CityPulse platform uses the Worker in `worker/`. See the [root README](../README.md) for the working platform and deployment instructions.
+
 
 # Tamil Nadu CityPulse Backend
 

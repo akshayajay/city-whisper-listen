@@ -7,10 +7,10 @@ export default defineConfig({
   server: {
     host: "::",
     port: 8080,
+    proxy: { "/api": "http://127.0.0.1:8787" },
   },
-  plugins: [
-    react(),
-  ],
+  build: { outDir: "dist/client" },
+  plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

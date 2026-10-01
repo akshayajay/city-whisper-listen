@@ -1,135 +1,82 @@
+# CityPulse
 
-# CityPulse - Tamil Nadu Citizen Grievance Platform
+A working civic analytics platform for Tamil Nadu: submit a report, watch it arrive on connected dashboards, and explore the same persisted records through charts, a city map, filters, and CSV export.
 
-CityPulse is a comprehensive platform designed to collect, analyze, and visualize citizen grievances and social media sentiment in Tamil Nadu.
+## What works
 
-## Features
+- **Citizen reports:** validated submissions saved in a database, with stable IDs and duplicate-safe retries.
+- **Streaming updates:** server-sent events announce new records; clients reconnect with a cursor and refresh analytics. A 15-second fallback refresh recovers missed updates.
+- **Honest demo mode:** synthetic events arrive every five seconds while a demo workspace is open. Demo records are stored separately from citizen reports and expire after 24 hours. Pausing stops that browser's generator; another viewer can still generate shared demo events.
+- **Connected analytics:** city, category, sentiment, search, and time-window filters apply to the feed, totals, charts, map, and export. Database batches keep panel totals consistent.
+- **Functional navigation:** overview, signal map, analytics, citizen reports, and data sources are real routes, including direct page loads.
+- **Responsive interface:** mobile navigation, accessible report dialog, explicit loading/error/empty states, and keyboard-selectable city markers.
 
-### Grievance Management
-- Submit and track citizen grievances
-- Categorize issues by type (roads, water, waste management, etc.)
-- Map-based visualization of grievance distribution
+## Run locally
 
-### Social Media Analysis
-- Real-time data collection from Twitter (X) and Facebook
-- Machine learning-based sentiment analysis of social media posts
-- Trending topic identification
-- Geographic distribution of sentiment
-- Live updates of new social media posts
+Use **Node.js 24 or newer** (the local database uses `node:sqlite`).
 
-### Analytics Dashboard
-- Real-time statistics on grievances and resolutions
-- Sentiment trend analysis over time
-- Category-based distribution
-- Social media integration
+```sh
+npm ci
+npm run dev:api
+```
 
-## Technical Implementation
+In another terminal:
 
-### Frontend
-- React with TypeScript
-- Tailwind CSS for styling
-- Shadcn UI components
-- Recharts for data visualization
-- React Query for data fetching and caching
-- WebSocket for real-time updates
-
-### Backend
-- Python with FastAPI
-- Machine learning with Hugging Face Transformers
-- Twitter API and Facebook Graph API integration
-- SQLite database (configurable for production)
-- WebSocket server for real-time updates
-
-## Getting Started
-
-### Setting Up the Frontend
-```bash
-# Install dependencies
-npm install
-
-# Run development server
+```sh
 npm run dev
 ```
 
-View the dashboard at:
+Open [the local dashboard](http://localhost:8080/dashboard). Vite proxies `/api` to the API on port 8787. Local records survive restarts in the ignored `.data/citypulse.sqlite` file. No social API keys or OpenAI key are required.
 
-- Local development: http://localhost:8080/dashboard
-- Local preview build: http://127.0.0.1:4173/dashboard
+The default view is explicitly labeled **Demo**. Choose **Live** to view only real citizen submissions. The report form always saves to Live and switches to that dataset after success.
 
-### Setting Up the Backend
-```bash
-# Navigate to backend directory
-cd backend
+## Checks
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your API keys
-
-# Run the backend server
-python -m uvicorn main:app --reload
-```
-
-### Environment Variables
-Create a `.env` file in the frontend directory with:
-```
-VITE_API_URL=http://localhost:8000
-```
-
-The backend also supports a `.env` file:
-```
-USE_MOCK_ML=true
-ENABLE_BACKGROUND_JOBS=true
-REALTIME_INGEST_INTERVAL_SECONDS=8
-```
-
-`USE_MOCK_ML=true` is the recommended default for deployment. It keeps the API fast and lightweight while still serving functional demo data. To use the transformer model in production, install `transformers` and `torch`, set `USE_MOCK_ML=false`, and provision a host with enough memory for the model.
-
-With background jobs enabled, the backend collects new civic signals every `REALTIME_INGEST_INTERVAL_SECONDS`, classifies them, stores them in SQLite, updates trend aggregates, and broadcasts them to connected dashboard clients over WebSocket. Without Twitter/X credentials, it runs a realistic Tamil Nadu demo stream across Twitter, Facebook, and the citizen portal.
-
-## Tests
-
-This repository includes backend unit tests and a GitHub Actions workflow in `.github/workflows/tests.yml`.
-
-Run backend unit tests:
-```bash
-cd backend
-USE_MOCK_ML=true ENABLE_BACKGROUND_JOBS=false python -m unittest discover -s tests -v
-```
-
-Run frontend checks:
-```bash
+```sh
+npm test
+npm run typecheck
 npm run lint
 npm run build
 ```
 
+The integration tests exercise the same Worker handlers and SQL used in production against a real SQLite database. They cover persistence after restart, duplicate prevention, input validation, dataset separation, filter/aggregate reconciliation, CSV escaping, time windows, storage errors, and SSE cursor replay.
+
 ## Deployment
 
-### Render full-stack deployment
-This repository includes `render.yaml` for a two-service Render deploy:
+The full platform uses a Cloudflare-compatible ESM Worker and a persistent D1 database, hosted together through Sites. The manifest is [`.openai/hosting.json`](.openai/hosting.json). Build outputs are `dist/client` (frontend) and `dist/server/index.js` (API Worker).
 
-- `citypulse-api`: FastAPI backend from `backend/`
-- `citypulse-dashboard`: static Vite dashboard from `dist/`
+- Bind a D1 database as `DB` and the frontend assets as `ASSETS`.
+- Apply the versioned SQL migrations in [`drizzle/`](drizzle/) before starting the Worker.
+- Serve SPA routes through the asset binding and `/api/*` through the Worker.
+- Keep the site access-controlled unless intentionally opening it to a public audience. This app is a shared workspace: visitors with access can read reports and submit new ones.
+- A static-only deployment does **not** provide the API or durable storage. Old Vercel/Netlify static deployment files have been retired to avoid silently publishing a nonfunctional app.
 
-Steps:
+For a self-hosted Node deployment, `npm start` serves both built assets and the same API using SQLite. Set `PORT`, `HOST`, and `DATA_DIR` as needed and attach durable storage. The included Render configuration uses this single-service arrangement; it requires a paid plan for its persistent disk. No paid deployment is created automatically.
 
-1. Push the repository to GitHub.
-2. In Render, create a new Blueprint from the repository.
-3. After the API service is created, confirm the frontend `VITE_API_URL` environment variable matches the API service URL.
-4. Trigger a redeploy of the dashboard if you changed `VITE_API_URL`.
+The older Python prototype is retained in [`backend/`](backend/) for reference. It is **not** the backend for this version, and its social-media demo data is not mixed into the deployed database.
 
-### Static-only dashboard
-The dashboard can also be deployed to Vercel or Netlify. It remains usable without a backend because the frontend falls back to bundled demo data when API requests fail.
+## API
 
-For a connected deployment, set:
-```
-VITE_API_URL=https://your-api-host.example.com
-```
+| Method | Endpoint        | Purpose                                                   |
+| ------ | --------------- | --------------------------------------------------------- |
+| GET    | `/api/health`   | Database and service readiness                            |
+| GET    | `/api/snapshot` | Consistent totals, charts, and newest 100 matching events |
+| GET    | `/api/stream`   | SSE announcements and heartbeats, with cursor replay      |
+| POST   | `/api/reports`  | Validate and persist a real citizen report                |
+| POST   | `/api/demo`     | Add duplicate-safe simulated events                       |
+| GET    | `/api/export`   | Export up to 10,000 matching records as CSV               |
 
-Vercel uses `vercel.json` for client-side routing. Netlify uses `netlify.toml` for the build command and SPA redirect.
+Snapshot and export accept `mode=live|demo`, `city`, `category`, `sentiment`, `q`, and `hours=1|24|168|720`. Timestamps are UTC in storage; hourly chart labels and feed times use the browser's timezone. Calendar-day chart buckets are UTC. Search matches literal text in report content and neighborhood. The stream accepts `mode` and `cursor`, or the standard `Last-Event-ID` header.
 
-## Status
+## Interpretation and limits
 
-This is a demonstration project showing how citizen feedback and social media data with machine learning can be leveraged to improve urban governance in Tamil Nadu.
+- Sentiment is an **English keyword heuristic**, not a trained ML model or validated measure of public opinion. Negative keywords take precedence; unmatched text is neutral. Tamil and other languages can be submitted but are not reliably classified.
+- Categories are selected by reporters. Demo sentiments and categories are predetermined examples.
+- The map uses city centroids, not exact incident locations. Signal volume is not population-normalized.
+- X/Facebook are **not connected**. The platform does not scrape social media, forward reports to government, or claim official resolution.
+- Reports are public on the live site. Do not submit personal details. The independent project is not an emergency service.
+- The current deployment is intended for a small shared workspace. Report intake is limited to 10 new submissions per client per 10-minute window using rotating hashed network identifiers. High-volume rollout would still need moderation, stronger abuse controls, and operational monitoring.
+
+## Hosted platform
+
+[Open CityPulse](https://citypulse-listen.akshayajayakanth.chatgpt.site) — a public workspace with separate Live and Demo datasets.
