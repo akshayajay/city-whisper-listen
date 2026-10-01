@@ -1,5 +1,5 @@
 export type Mode = "live" | "demo";
-export type Sentiment = "positive" | "neutral" | "negative";
+export type Sentiment = "positive" | "neutral" | "negative" | "unscored";
 export interface CivicEvent {
   seq: number;
   id: string;
@@ -20,6 +20,7 @@ export interface CivicEvent {
 export interface Snapshot {
   summary: {
     total: number;
+    sentimentTotal: number;
     negative: number;
     positive: number;
     neutral: number;
@@ -72,7 +73,16 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json();
 }
 
+export interface FreeSource {
+  id: string; name: string; kind: "conditions" | "news" | "social" | "hazards"; docs: string; description: string;
+  status: string; everyMinutes: number; lastAttempt: string | null; lastSuccess: string | null; lastError: string | null;
+  lastCount: number; nextAllowed: number;
+  payload: null | { measuredAt?: string; values?: Record<string, number | null>; modeled?: boolean; scanned?: number; sampleSeconds?: number;
+    hazards?: {id: string; title: string; date: string; url: string; distanceKm: number}[] };
+  history: {time: string; temperature_2m?: number; pm2_5?: number}[];
+}
 export interface SourceStatus {
+  free: FreeSource[];
   x: { status: string; ready: boolean; query: string; lastSuccess: string | null; lastError: string | null;
     cadenceMinutes: number; dailyPostLimit: number; reservedPosts: number; sampled: boolean };
 }

@@ -1,3 +1,4 @@
+import { syncFreeSources, freeSourceStatus } from "./free-sources.js";
 import { authorizedX, syncX, xStatus } from "./x-source.js";
 import { allowReport } from "./rate-limit.js";
 import {
@@ -138,7 +139,9 @@ export default {
           return json({ error: "Cross-origin writes are not allowed." }, 403);
       }
       if (path === "/api/sources" && request.method === "GET")
-        return json({ x: await xStatus(env) });
+        return json({ x: await xStatus(env), free: await freeSourceStatus(env.DB) });
+      if (path === "/api/sources/sync" && request.method === "POST")
+        return json(await syncFreeSources(env));
       if (path === "/api/sources/x/sync" && request.method === "POST") {
         if (!(await authorizedX(request, env))) return json({ error: "Owner ingestion authorization required." }, 401);
         const result = await syncX(env);

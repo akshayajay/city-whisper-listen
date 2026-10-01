@@ -56,7 +56,7 @@ export async function snapshot(db, url) {
   // A batch gives all panels the same database snapshot, even during concurrent writes.
   const queries = [
     [
-      `SELECT COUNT(*) AS total, COALESCE(SUM(sentiment='negative'),0) AS negative, COALESCE(SUM(sentiment='positive'),0) AS positive, COALESCE(SUM(sentiment='neutral'),0) AS neutral, COUNT(DISTINCT city) AS cities, MAX(received_at) AS latest FROM events WHERE ${where}`,
+      `SELECT COUNT(*) AS total, COALESCE(SUM(sentiment='negative'),0) AS negative, COALESCE(SUM(sentiment='positive'),0) AS positive, COALESCE(SUM(sentiment='neutral'),0) AS neutral, COALESCE(SUM(sentiment IN ('negative','positive','neutral')),0) AS sentimentTotal, COUNT(DISTINCT city) AS cities, MAX(received_at) AS latest FROM events WHERE ${where}`,
       args,
     ],
     [`SELECT * FROM events WHERE ${where} ORDER BY seq DESC LIMIT 100`, args],

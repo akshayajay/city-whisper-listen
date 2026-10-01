@@ -5,6 +5,7 @@ A working civic analytics platform for Tamil Nadu: submit a report, watch it arr
 ## What works
 
 - **Citizen reports:** validated submissions saved in a database, with stable IDs and duplicate-safe retries.
+- **Seven free external feeds:** sampled Chennai civic posts from Bluesky, GDELT civic headlines, Open-Meteo weather and CAMS air quality, plus regional USGS, NASA EONET and GDACS feeds. Each has independent cooldowns, timestamps and visible failure states. See [source coverage and operation](docs/free-sources.md).
 - **Streaming updates:** server-sent events announce new records; clients reconnect with a cursor and refresh analytics. A 15-second fallback refresh recovers missed updates.
 - **Honest demo mode:** synthetic events arrive every five seconds while a demo workspace is open. Demo records are stored separately from citizen reports and expire after 24 hours. Pausing stops that browser's generator; another viewer can still generate shared demo events.
 - **Connected analytics:** city, category, sentiment, search, and time-window filters apply to the feed, totals, charts, map, and export. Database batches keep panel totals consistent.
@@ -28,7 +29,7 @@ npm run dev
 
 Open [the local dashboard](http://localhost:8080/dashboard). Vite proxies `/api` to the API on port 8787. Local records survive restarts in the ignored `.data/citypulse.sqlite` file. Citizen reports and demo mode need no API keys. X ingestion needs separate approved API access; see [X setup](docs/x-integration.md).
 
-The default view is explicitly labeled **Demo**. Choose **Live** to view citizen submissions and imported X posts, with a source filter to separate them. The report form always saves to Live and switches to that dataset after success.
+The default view is explicitly labeled **Demo**. Choose **Live** to view citizen submissions, matching Bluesky posts and civic headlines, with source filters. Chennai weather, air quality and regional hazards have separate context panels. The report form always saves to Live and switches to that dataset after success. Free feeds refresh while a visible Live workspace is open; this is not an always-on background collector. X remains paused on the public deployment.
 
 ## Checks
 
@@ -64,6 +65,8 @@ The older Python prototype is retained in [`backend/`](backend/) for reference. 
 | GET    | `/api/stream`   | SSE announcements and heartbeats, with cursor replay      |
 | POST   | `/api/reports`  | Validate and persist a real citizen report                |
 | POST   | `/api/demo`     | Add duplicate-safe simulated events                       |
+| GET    | `/api/sources`  | Provider status, timestamps and environmental history      |
+| POST   | `/api/sources/sync` | Collect due free feeds, with shared provider cooldowns |
 | GET    | `/api/export`   | Export up to 10,000 matching records as CSV               |
 
 Snapshot and export accept `mode=live|demo`, `city`, `category`, `sentiment`, `q`, and `hours=1|24|168|720`. Timestamps are UTC in storage; hourly chart labels and feed times use the browser's timezone. Calendar-day chart buckets are UTC. Search matches literal text in report content and neighborhood. The stream accepts `mode` and `cursor`, or the standard `Last-Event-ID` header.
@@ -71,7 +74,7 @@ Snapshot and export accept `mode=live|demo`, `city`, `category`, `sentiment`, `q
 ## Interpretation and limits
 
 - Sentiment is an **English keyword heuristic**, not a trained ML model or validated measure of public opinion. Negative keywords take precedence; unmatched text is neutral. Tamil and other languages can be submitted but are not reliably classified.
-- Categories are selected by reporters. Demo sentiments and categories are predetermined examples.
+- Categories are selected by reporters or inferred with keywords for imported posts and news. Demo sentiments and categories are predetermined examples. News is unscored; environmental measurements and hazards do not enter report totals or sentiment.
 - The map uses city centroids, not exact incident locations. Signal volume is not population-normalized.
 - X has an optional, owner-authorized Chennai recent-search integration with bounded sampling and explicit source status. It stays disabled until credentials and a read limit are configured. Facebook is not connected. The platform does not scrape social media, forward reports to government, or claim official resolution.
 - Reports are public on the live site. Do not submit personal details. The independent project is not an emergency service.

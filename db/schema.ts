@@ -39,3 +39,19 @@ export const xIngestion = sqliteTable("x_ingestion", {
   day: text("day"),
   reservedPosts: integer("reserved_posts").notNull().default(0),
 });
+
+export const sourceState = sqliteTable("source_state", {
+  id: text("id").primaryKey(),
+  nextAllowed: integer("next_allowed").notNull().default(0),
+  lastAttempt: text("last_attempt"),
+  lastSuccess: text("last_success"),
+  lastError: text("last_error"),
+  lastCount: integer("last_count").notNull().default(0),
+  payload: text("payload"),
+});
+export const measurements = sqliteTable("measurements", {
+  id: text("id").primaryKey(),
+  source: text("source").notNull(),
+  observedAt: text("observed_at").notNull(),
+  payload: text("payload").notNull(),
+}, t => [index("idx_measurement_time").on(t.source, t.observedAt)]);

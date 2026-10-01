@@ -43,6 +43,7 @@ import {
 import SignalMap from "./platform/SignalMap";
 import ReportDialog from "./platform/ReportDialog";
 import XPost from "./platform/XPost";
+import { FreeSourcePanel, CityConditions } from "./platform/FreeSources";
 import {
   api,
   categories,
@@ -103,12 +104,10 @@ function EventList({
             {event.source === "X" ? <XPost event={event} /> : <p>{event.content}</p>}
             <div className="event-tags">
               <span className="category-tag">{event.category}</span>
-              <span className={`sentiment ${event.sentiment}`}>
-                {event.sentiment}
-              </span>
-              <small>{event.demo ? "Simulated event" : event.source === "X" ? "X · Chennai mention" : "Citizen report"}</small>
-              {event.source === "X" && event.source_url && (
-                <a href={event.source_url} target="_blank" rel="noopener noreferrer" className="post-link">View on X <ArrowUpRight size={12} /></a>
+              {event.sentiment !== "unscored" && <span className={`sentiment ${event.sentiment}`}>{event.sentiment}</span>}
+              <small>{event.demo ? "Simulated event" : event.source === "X" ? "X · Chennai mention" : event.source}</small>
+              {event.source_url && (
+                <a href={event.source_url} target="_blank" rel="noopener noreferrer" className="post-link">{event.source === "X" ? "View on X" : event.source === "Bluesky" ? "View on Bluesky" : "Read original"} <ArrowUpRight size={12} /></a>
               )}
             </div>
           </div>
@@ -135,6 +134,8 @@ function Platform() {
     q = params.get("q") || "";
   const [search, setSearch] = useState(q);
   const [data, setData] = useState<Snapshot | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const syncBusy = useRef(false);
   const [sources, setSources] = useState<SourceStatus | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -258,6 +259,22 @@ function Platform() {
       clearInterval(timer);
     };
   }, [mode, paused, refresh]);
+  const syncFree = useCallback(async () => {
+    if (syncBusy.current) return;
+    syncBusy.current = true; setSyncing(true);
+    try {
+      await api("/api/sources/sync", {method:"POST",signal:AbortSignal.timeout(45000)});
+      setSources(await api<SourceStatus>("/api/sources"));
+      void refresh();
+    } catch { setNotice("Some free feeds could not be checked. Last confirmed data remains visible; collection will retry."); }
+    finally { syncBusy.current = false; setSyncing(false); }
+  }, [refresh]);
+  useEffect(() => {
+    if (mode !== "live") return;
+    const tick = () => { if (!document.hidden) void syncFree(); };
+    tick(); const timer = setInterval(tick, 60000);
+    return () => clearInterval(timer);
+  }, [mode, syncFree]);
   const route = location.pathname;
   const isMap = route === "/map",
     isReports = route === "/reports",
@@ -267,8 +284,9 @@ function Platform() {
     city !== "all" || category !== "all" || sentiment !== "all" || (mode === "live" && source !== "all") || !!q;
   const summary = data?.summary;
   const total = summary?.total || 0;
-  const negativeShare = total
-    ? Math.round(((summary?.negative || 0) / total) * 100)
+  const opinionTotal = summary?.sentimentTotal || 0;
+  const negativeShare = opinionTotal
+    ? Math.round(((summary?.negative || 0) / opinionTotal) * 100)
     : 0;
   const title = isMap
     ? "A local view. A bigger picture."
@@ -447,7 +465,7 @@ function Platform() {
                 <span>
                   {mode === "demo"
                     ? "Simulated civic signals arrive every 5 seconds. They never enter your live dataset."
-                    : "Citizen reports appear immediately. Chennai posts from X join this feed when the source is connected."}
+                    : "Citizen reports, public posts and civic news. Environmental feeds have their own panels; X remains optional."}
                 </span>
               </div>
             </div>
@@ -480,7 +498,7 @@ function Platform() {
           </div>
           {mode === "live" && (
             <div className="chennai-source-strip">
-              <div><strong>X · Chennai civic signals</strong><span>{sources?.x.status || "Source status unavailable"}</span></div>
+              <div><strong>Chennai · open civic data</strong><span>{sources?.free?.filter(s => s.status === "Connected").length || 0} / 7 free feeds checked · X {sources?.x.status || "status unavailable"}</span></div>
               <Link to="/sources?mode=live">Source details <ArrowUpRight size={14} /></Link>
               <Link to="/dashboard?mode=live&city=Chennai">Explore Chennai <ArrowUpRight size={14} /></Link>
             </div>
@@ -553,6 +571,8 @@ function Platform() {
                 {mode === "live" && <select aria-label="Filter source" value={source} onChange={e => update("source", e.target.value)}>
                   <option value="all">All live sources</option>
                   <option value="Citizen report">Citizen reports</option>
+                  <option value="Bluesky">Bluesky · Chennai</option>
+                  <option value="GDELT news">GDELT · Civic news</option>
                   <option value="X">X · Chennai</option>
                 </select>}
                 {activeFilters && (
@@ -590,6 +610,7 @@ function Platform() {
             </div>
           ) : isSources ? (
             <div className="sources-layout">
+              <FreeSourcePanel sources={sources?.free || []} syncing={syncing} onSync={() => void syncFree()} />
               <section className="panel">
                 <div className="panel-heading">
                   <div>
@@ -669,7 +690,7 @@ function Platform() {
                     Sentiment uses a small English keyword heuristic, not a
                     trained ML model. Negative keywords take precedence;
                     unmatched text is neutral. Labels may be wrong. Categories
-                    are chosen by the reporter. X categories use simple English and Tamil issue keywords; Tamil sentiment is not modeled.
+                    are chosen by the reporter. Public posts use keyword categories; Tamil sentiment is not modeled. News headlines are unscored and excluded from sentiment percentages. Environmental readings and regional hazards never enter report counts or sentiment.
                   </p>
                   <h3>
                     03 <span>Update together</span>
@@ -693,6 +714,7 @@ function Platform() {
             </div>
           ) : (
             <>
+              {mode === "live" && !isReports && !isMap && (city === "all" || city === "Chennai") && <CityConditions sources={sources?.free || []} />}
               <div className="stat-grid">
                 <article className="stat-card">
                   <div>
@@ -730,7 +752,7 @@ function Platform() {
                   <strong>{number(summary?.negative)}</strong>
                   <small>
                     <span className="stat-pill orange">{negativeShare}%</span>of
-                    matching signals
+                    scored reports and posts
                   </small>
                   <div className="stat-line">
                     <i style={{ width: `${negativeShare}%` }} />
@@ -990,8 +1012,8 @@ function Platform() {
                       </div>
                       <div className="chart-footer">
                         <span>
-                          Based on {number(total)}{" "}
-                          {mode === "demo" ? "simulated" : "live"} signals
+                          Based on {number(opinionTotal)}{" "}
+                          {mode === "demo" ? "simulated" : "scored"} reports and posts
                         </span>
                         <span>
                           Keyword sentiment ·{" "}
@@ -1002,7 +1024,7 @@ function Platform() {
                     <section className="panel category-panel">
                       <div className="panel-heading">
                         <div>
-                          <h2>What’s on people’s minds</h2>
+                          <h2>Issues in the feed</h2>
                           <p>Signals by issue category</p>
                         </div>
                         <BarChart3 size={18} />
