@@ -39,6 +39,7 @@ test('backfill persists once; shared leases prevent duplicate work; cached archi
 test('news writer denies missing or incorrect authorization before any fetch or database write',async()=>{
  const token='testing-only-credential-at-least-32-characters';const env={NEWS_INGEST_TOKEN_SHA256:await digest(token)};
  assert.equal(await authorizedNews(new Request('https://local',{headers:{Authorization:`Bearer ${token}`}}),env),true);
+ assert.equal(await authorizedNews(new Request('https://local',{headers:{Authorization:`Bearer ${token}`}}),{NEWS_SCHEDULER_TOKEN_SHA256:await digest(token)}),true);
  for(const headers of [{},{Authorization:'Bearer wrong-credential-at-least-32-characters'}]){
   const db=database();try{const r=await worker.fetch(new Request('https://local/api/news/sync',{method:'POST',headers}),{...env,DB:db});assert.equal(r.status,401);assert.equal((await db.prepare('SELECT count(*) AS n FROM source_state').first()).n,0);}finally{db.close();}
  }

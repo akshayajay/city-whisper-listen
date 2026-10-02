@@ -77,12 +77,15 @@ export async function digest(text) {
   return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))].map(n => n.toString(16).padStart(2, '0')).join('');
 }
 export async function authorizedNews(request, env) {
-  if (!/^[a-f0-9]{64}$/.test(env.NEWS_INGEST_TOKEN_SHA256 || '')) return false;
+  const allowed = [env.NEWS_INGEST_TOKEN_SHA256, env.NEWS_SCHEDULER_TOKEN_SHA256].filter(value => /^[a-f0-9]{64}$/.test(value || ''));
   const token = request.headers.get('authorization')?.match(/^Bearer (.{32,4096})$/)?.[1];
-  if (!token) return false;
-  const actual = await digest(token); let different = 0;
-  for (let i = 0; i < actual.length; i++) different |= actual.charCodeAt(i) ^ env.NEWS_INGEST_TOKEN_SHA256.charCodeAt(i);
-  return different === 0;
+  if (!token || !allowed.length) return false;
+  const actual = await digest(token);
+  return allowed.some(expected => {
+    let different = 0;
+    for (let i = 0; i < actual.length; i++) different |= actual.charCodeAt(i) ^ expected.charCodeAt(i);
+    return different === 0;
+  });
 }
 export function parseGdeltHeadlines(text, now) {
   const items = [];
@@ -198,7 +201,7 @@ export async function newsStatus(env, now = Date.now()) {
   const events = await rows(env.DB, 'SELECT * FROM events WHERE news_meta IS NOT NULL AND created_at >= ? ORDER BY created_at DESC LIMIT 501', [new Date(now - 30 * DAY).toISOString()]);
   const states = new Map((await rows(env.DB, "SELECT * FROM source_state WHERE id IN ('news-pib','news-mongabay','news-gdelt-files')")).map(s => [s.id, s]));
   const groups = groupCoverage(events.slice(0, 500));
-  return { windowDays: 30, cadenceMinutes: 15, writerConfigured: !!env.NEWS_INGEST_TOKEN_SHA256, capped: events.length > 500, articles: Math.min(events.length, 500), coverageGroups: groups.length, latestPublication: events[0]?.created_at || null,
+  return { windowDays: 30, cadenceMinutes: 15, writerConfigured: !!(env.NEWS_INGEST_TOKEN_SHA256 || env.NEWS_SCHEDULER_TOKEN_SHA256), capped: events.length > 500, articles: Math.min(events.length, 500), coverageGroups: groups.length, latestPublication: events[0]?.created_at || null,
     topics: [...new Set(events.map(e => e.category))].map(name => ({ name, count: events.filter(e => e.category === name).length })), groups: groups.slice(0, 8),
     sources: NEWS_SOURCES.map(source => {
       const state = states.get(source.id); let payload = {}; try { payload = JSON.parse(state?.payload || '{}'); } catch { /* Status remains readable. */ }

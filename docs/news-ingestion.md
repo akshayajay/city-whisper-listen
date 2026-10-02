@@ -14,6 +14,12 @@ The Live UI defaults to 30 days so backfilled records are visible without changi
 
 ## Unattended access and operation
 
+The active scheduler is the repository's **Collect Chennai news** GitHub Actions workflow. It requests runs at minutes 7, 22, 37 and 52 of every hour, independent of browsers and the developer's laptop. GitHub can delay scheduled jobs; public-repository schedules can be disabled after 60 days without repository activity. Check the Actions run history and the Site's last-success timestamps. The Site's built-in cloud scheduler rejected 15-minute cadence because it allows at most one run per hour; no duplicate Site task was created.
+
+GitHub uses a separate random `CITYPULSE_NEWS_TOKEN` repository secret. Only its SHA-256 digest is stored in the Site's `NEWS_SCHEDULER_TOKEN_SHA256` secret. The script sends it directly to the fixed public Site origin with redirects disabled. It grants no Site account, connected-app, X, code-deployment, report-editing or arbitrary content-write access. The job collects once, reads saved news status, and fails if neither the news index nor independent publisher has a recent successful check. Known partial publisher failures remain visible without making healthy collection appear entirely failed.
+
+For owner-driven cloud verification, the following separate existing service-credential path remains available:
+
 The Site is public, but the writer is authenticated separately. The owner's existing Site service credential is authorized narrowly for this collector by storing its SHA-256 digest in the secret runtime variable `NEWS_INGEST_TOKEN_SHA256`. The Worker verifies an application `Authorization: Bearer …` header against that digest. Dispatch service access alone is insufficient. No user identity or connected private sources are required; all collected sources are public. No credential appears in source code, browser code, logs, or schedule text.
 
 A scheduled cloud run must:
