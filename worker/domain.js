@@ -1,11 +1,5 @@
-export const cities = [
-  { name: "Chennai", lat: 13.0827, lon: 80.2707 },
-  { name: "Coimbatore", lat: 11.0168, lon: 76.9558 },
-  { name: "Madurai", lat: 9.9252, lon: 78.1198 },
-  { name: "Tiruchirappalli", lat: 10.7905, lon: 78.7047 },
-  { name: "Salem", lat: 11.6643, lon: 78.146 },
-  { name: "Tirunelveli", lat: 8.7139, lon: 77.7567 },
-];
+import { districts } from './locations.js';
+export const cities = districts;
 export const categories = [
   "Infrastructure",
   "Water",
@@ -34,7 +28,7 @@ export function validateReport(body) {
   if (area.length < 2 || area.length > 100)
     throw new Error("Enter an area between 2 and 100 characters.");
   if (!cities.some((c) => c.name === body.city))
-    throw new Error("Choose a supported city.");
+    throw new Error("Choose a Tamil Nadu district.");
   if (!categories.includes(body.category))
     throw new Error("Choose a supported category.");
   if (typeof body.id !== "string" || !/^[a-zA-Z0-9-]{16,80}$/.test(body.id))

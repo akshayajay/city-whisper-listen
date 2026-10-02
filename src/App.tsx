@@ -128,7 +128,7 @@ function EventList({
 function Platform() {
   const [params, setParams] = useSearchParams();
   const location = useLocation();
-  const mode: Mode = params.get("mode") === "live" ? "live" : "demo";
+  const mode: Mode = params.get("mode") === "demo" ? "demo" : "live";
   const city = params.get("city") || "all",
     category = params.get("category") || "all",
     source = params.get("source") || "all",
@@ -463,7 +463,7 @@ function Platform() {
                 <strong>
                   {mode === "demo"
                     ? "You’re exploring the demo workspace"
-                    : "Real voices. Chennai signals."}
+                    : "Real voices. Tamil Nadu signals."}
                 </strong>
                 <span>
                   {mode === "demo"
@@ -501,9 +501,9 @@ function Platform() {
           </div>
           {mode === "live" && (
             <div className="chennai-source-strip">
-              <div><strong>Chennai · open civic data</strong><span>{sources?.free?.filter(s => s.status === "Connected").length || 0} / {sources?.free?.length || 7} open feeds checked · X {sources?.x.status || "status unavailable"}</span></div>
+              <div><strong>Tamil Nadu · news & citizen reports</strong><span>{sources?.free?.filter(s => s.status === "Connected").length || 0} / {sources?.free?.length || 7} open feeds checked · X {sources?.x.status || "status unavailable"}</span></div>
               <Link to="/sources?mode=live">Source details <ArrowUpRight size={14} /></Link>
-              <Link to="/dashboard?mode=live&city=Chennai">Explore Chennai <ArrowUpRight size={14} /></Link>
+              <Link to="/dashboard?mode=live">Explore Tamil Nadu <ArrowUpRight size={14} /></Link>
             </div>
           )}
           {notice && (
@@ -546,7 +546,7 @@ function Platform() {
                   value={city}
                   onChange={(e) => update("city", e.target.value)}
                 >
-                  <option value="all">All cities</option>
+                  <option value="all">All Tamil Nadu</option><option value="Tamil Nadu">Statewide / multiple districts</option>
                   {cities.map((c) => (
                     <option key={c}>{c}</option>
                   ))}
@@ -649,7 +649,7 @@ function Platform() {
                   <div>
                     <h3>Demo simulator</h3>
                     <p>
-                      Synthetic examples across six cities. Generates while a
+                      Synthetic examples across 38 districts. Generates while a
                       demo workspace is open; old demo events expire after 24
                       hours.
                     </p>
@@ -721,7 +721,7 @@ function Platform() {
             </div>
           ) : (
             <>
-              {mode === "live" && !isMap && (city === "all" || city === "Chennai") && <NewsPulse detailed={isReports} />}
+              {mode === "live" && !isMap && <NewsPulse detailed={isReports} />}
               {mode === "live" && !isReports && !isMap && (city === "all" || city === "Chennai") && <CityConditions sources={sources?.free || []} />}
               <div className="stat-grid">
                 <article className="stat-card">
@@ -768,14 +768,14 @@ function Platform() {
                 </article>
                 <article className="stat-card">
                   <div>
-                    <span>Cities heard from</span>
+                    <span>Districts heard from</span>
                     <MapPin size={17} />
                   </div>
                   <strong>
-                    {summary?.cities || 0}
-                    <em>/ 6</em>
+                    {data?.cities.filter(c => cities.includes(c.name)).length || 0}
+                    <em>/ 38</em>
                   </strong>
-                  <small>distinct cities in this view</small>
+                  <small>districts with signals in this view</small>
                   <div className="city-dots">
                     {cities.map((c) => (
                       <i

@@ -1,12 +1,5 @@
 import { MapPin } from "lucide-react";
-const positions = [
-  { name: "Chennai", lat: 13.0827, lon: 80.2707 },
-  { name: "Coimbatore", lat: 11.0168, lon: 76.9558 },
-  { name: "Madurai", lat: 9.9252, lon: 78.1198 },
-  { name: "Tiruchirappalli", lat: 10.7905, lon: 78.7047 },
-  { name: "Salem", lat: 11.6643, lon: 78.146 },
-  { name: "Tirunelveli", lat: 8.7139, lon: 77.7567 },
-];
+import { districts as positions } from './types';
 export default function SignalMap({
   data,
   selected,
@@ -26,7 +19,7 @@ export default function SignalMap({
       <svg
         viewBox="0 0 600 400"
         role="img"
-        aria-label="Interactive city signal map. Select a city to filter all analytics."
+        aria-label="District signal map. Use the district selector or select a marker to filter analytics."
       >
         <defs>
           <pattern
@@ -69,19 +62,19 @@ export default function SignalMap({
         <text x="452" y="382" className="map-coordinate">
           80°E
         </text>
-        {positions.map((city, i) => {
-          const x = 90 + (city.lon - 76.9) * 105,
-            y = 340 - (city.lat - 8.7) * 65;
+        {positions.map((city) => {
+          const x = 90 + (city.lon - 76.6) * 95,
+            y = 340 - (city.lat - 8.1) * 55;
           const value = data.find((d) => d.name === city.name);
           const total = value?.total || 0;
           const active = selected === city.name;
-          const radius = 8 + Math.min(14, Math.sqrt(total) * 2);
+          const radius = total ? 5 + Math.min(6, Math.sqrt(total)) : 3;
           return (
             <g
               key={city.name}
               role="button"
               tabIndex={0}
-              aria-label={`${city.name}: ${total} signals. Filter city`}
+              aria-label={`${city.name}: ${total} signals. Filter district`}
               onClick={() => onSelect(active ? "all" : city.name)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -109,31 +102,21 @@ export default function SignalMap({
                 strokeWidth="3"
               />
               <circle cx={x} cy={y} r="3" fill="white" />
-              <text
-                x={x + (i === 0 ? -15 : 18)}
-                y={y - 16}
-                textAnchor={i === 0 ? "end" : "start"}
-                className="city-label"
-              >
-                {city.name}
-              </text>
-              <text
-                x={x + (i === 0 ? -15 : 18)}
-                y={y}
-                textAnchor={i === 0 ? "end" : "start"}
-                className="city-count"
-              >
-                {total} signals
-              </text>
+              <title>{city.name}: {total} signals</title>
+              {active && <text x={x - 10} y={y - 15} textAnchor="end" className="city-label">{city.name} · {total}</text>}
             </g>
           );
         })}
       </svg>
+      <div className="district-map-controls">
+        <label>District <select aria-label="Map district" value={selected} onChange={e=>onSelect(e.target.value)}><option value="all">All Tamil Nadu</option><option value="Tamil Nadu">Statewide / multiple districts</option>{positions.map(d=><option key={d.name} value={d.name}>{d.name} · {data.find(v=>v.name===d.name)?.total || 0}</option>)}</select></label>
+        <small>{data.find(d=>d.name==='Tamil Nadu')?.total || 0} statewide / multi-district signals are not pinned to one location.</small>
+      </div>
       <div className="map-footer">
         <span>
           <i /> Signal volume
         </span>
-        <small>City centroids · not exact report locations</small>
+        <small>Approximate district headquarters · not incident locations</small>
       </div>
     </div>
   );

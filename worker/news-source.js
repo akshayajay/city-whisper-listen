@@ -1,5 +1,6 @@
 import { insert, rows } from './store.js';
 import { readLimited, safeUrl } from './free-sources.js';
+import { locateTamilNadu } from './locations.js';
 import { initialArchive } from './news-backfill.js';
 
 export const NEWS_CADENCE = 15 * 60000;
@@ -19,16 +20,16 @@ export function plainText(value = '') {
       return n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : '';
     }).replace(/\s+/g, ' ').trim();
 }
-const local = text => /\bChennai\b|சென்னை/i.test(text);
+const local = (text, indiaPublisher=false) => !!locateTamilNadu(text,{indiaPublisher});
 export function newsCategory(text) {
   for (const [category, expression] of [
-    ['Water', /\bwater(?:logging|\s+supply)?\b|sewage|flood|drainage|reservoir/i],
-    ['Waste', /\bwaste\b|garbage|sanitation|cleanliness|swachh/i],
-    ['Transport', /\b(?:traffic|metro|bus|buses|railway|rail|road|roads|toll|transport)\b/i],
-    ['Infrastructure', /pothole|streetlight|electric|power\s+(?:supply|cut)|mobile network|telecom|broadband/i],
-    ['Parks', /greenbelt|urban\s+(?:trees|forest)|wetland|biodiversity|pollution|air quality|ecolog/i],
-    ['Safety', /public health|hospital|fire safety|\baccident\b/i],
-    ['Other', /dak\s*adalat|postal|grievance|public services/i],
+    ['Water', /\bwater(?:logging|\s+supply)?\b|sewage|flood|drainage|reservoir|குடிநீர்|வெள்ளம்|கழிவுநீர்|நீர்த்தேக்கம்/i],
+    ['Waste', /\bwaste\b|garbage|sanitation|cleanliness|swachh|குப்பை|தூய்மை|கழிவு/i],
+    ['Transport', /\b(?:traffic|metro|bus|buses|railway|rail|road|roads|toll|transport)\b|பேருந்து|போக்குவரத்து|ரயில்|சாலை|மெட்ரோ/i],
+    ['Infrastructure', /pothole|streetlight|electric|power\s+(?:supply|cut)|mobile network|telecom|broadband|மின்தடை|மின்சாரம்|தெருவிளக்கு/i],
+    ['Parks', /greenbelt|urban\s+(?:trees|forest)|wetland|biodiversity|pollution|air quality|ecolog|மாசு|சதுப்புநிலம்|பல்லுயிர்/i],
+    ['Safety', /public health|hospital|fire safety|\baccident\b|விபத்து|மருத்துவமனை|தீவிபத்து/i],
+    ['Other', /dak\s*adalat|postal|grievance|public services|குறைதீர்|அஞ்சல்/i],
   ]) if (expression.test(text)) return category;
   return null;
 }
@@ -40,7 +41,7 @@ export function parsePibListing(html, now) {
     const title = plainText(m[1].match(/\btitle=(['"])([\s\S]*?)\1/i)?.[2] || m[3]);
     // The archive has dates, not times. Preserve the IST calendar date and expose that precision.
     const date = new Date(`${m[4]} 00:00:00 GMT+0530`).toISOString();
-    if (recent(date, now) && local(title) && newsCategory(title)) items.push({ title, date, url: `https://www.pib.gov.in/PressReleseDetail.aspx?PRID=${m[2]}`, byline: 'Press Information Bureau', datePrecision: 'day' });
+    if (recent(date, now) && local(title,true) && newsCategory(title)) items.push({ title, indiaPublisher:true, date, url: `https://www.pib.gov.in/PressReleseDetail.aspx?PRID=${m[2]}`, byline: 'Press Information Bureau', datePrecision: 'day' });
   }
   return [...new Map(items.map(item => [item.url, item])).values()].slice(0, 100);
 }
@@ -67,10 +68,10 @@ export function parseMongabay(posts, now) {
     const focus = `${title} ${paragraphs}`;
     const date = `${post.date_gmt}Z`;
     let url; try { url = new URL(post.link); } catch { return []; }
-    if (url.origin !== 'https://india.mongabay.com' || !recent(date, now) || !local(focus) || !newsCategory(focus)) return [];
+    if (url.origin !== 'https://india.mongabay.com' || !recent(date, now) || !local(focus,true) || !newsCategory(focus)) return [];
     // Display only the original headline, attribution and link; no rewritten licensed article text or photographs.
     const byline = plainText(post.yoast_head_json?.author || post._embedded?.author?.[0]?.name || 'Mongabay India');
-    return [{ title, date, url: url.href, byline, datePrecision: 'second', analysisText: focus }];
+    return [{ title, date, url: url.href, byline, datePrecision: 'second', analysisText: focus, indiaPublisher:true }];
   });
 }
 export async function digest(text) {
@@ -123,7 +124,7 @@ async function collect(source, now, previous, fetcher) {
 
   if (source.id === 'news-mongabay') {
     const after = new Date(now - 30 * DAY).toISOString().slice(0, 19);
-    const url = `https://india.mongabay.com/wp-json/wp/v2/posts?search=Chennai&after=${encodeURIComponent(after)}&per_page=100`;
+    const url = `https://india.mongabay.com/wp-json/wp/v2/posts?after=${encodeURIComponent(after)}&per_page=100`;
     const posts = JSON.parse(await fetchText(fetcher, url));
     return { items: parseMongabay(posts, now), scanned: posts.length };
   }
@@ -150,8 +151,9 @@ export function mentionedArea(text) {
   return found ? `${found} · location mentioned, not verified` : 'Chennai · city mention, not an incident location';
 }
 async function toRecord(item, source, now, initialBackfill = false) {
-  return { id: `article-${await digest(item.url)}`, content: item.title, city: 'Chennai', area: mentionedArea(item.analysisText || item.title), category: newsCategory(item.analysisText || item.title), sentiment: 'unscored', source: source.name, demo: 0, created_at: item.date, received_at: new Date(now).toISOString(), source_url: item.url, author_name: item.byline,
-    news_meta: JSON.stringify({ kind: source.kind, publisher: item.datePrecision === 'indexed' ? item.byline : source.name, license: source.license, datePrecision: item.datePrecision, initialBackfill, backfilled: now - Date.parse(item.date) > DAY, analysis: 'Rule-based topic and Chennai relevance; not verified incidents' }) };
+  const location = locateTamilNadu(item.analysisText || item.title, {indiaPublisher:!!item.indiaPublisher}) || {city:'Tamil Nadu',districts:[],scope:'statewide mention'};
+  return { id: `article-${await digest(item.url)}`, content: item.title, city: location.city, area: `${location.districts.join(', ') || 'Tamil Nadu'} · ${location.scope}, not verified incident location`, category: newsCategory(item.analysisText || item.title), sentiment: 'unscored', source: source.name, demo: 0, created_at: item.date, received_at: new Date(now).toISOString(), source_url: item.url, author_name: item.byline,
+    news_meta: JSON.stringify({ kind: source.kind, publisher: item.datePrecision === 'indexed' ? item.byline : source.name, license: source.license, datePrecision: item.datePrecision, initialBackfill, backfilled: now - Date.parse(item.date) > DAY, districts: location.districts, analysis: 'Rule-based topic and Tamil Nadu relevance; not verified incidents' }) };
 }
 export async function syncNews(env, { now = Date.now(), fetcher = fetch, backfill = true, ids = NEWS_SOURCES.map(s => s.id) } = {}) {
   // This small, attributed backfill was obtained from the public archive during setup.
@@ -182,18 +184,18 @@ export async function syncNews(env, { now = Date.now(), fetcher = fetch, backfil
   }
   return { checkedAt: new Date(now).toISOString(), results };
 }
-const tokens = text => new Set(plainText(text).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !['the','and','for','with','from','chennai','city','its'].includes(w)));
+const tokens = text => new Set(plainText(text).toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(w => w.length > 2 && !['the','and','for','with','from','chennai','city','its'].includes(w)));
 export function groupCoverage(events) {
   const groups = [];
   for (const event of events) {
     const words = tokens(event.content);
     const group = groups.find(g => {
-      if (g.category !== event.category || Math.abs(Date.parse(g.publishedAt) - Date.parse(event.created_at)) > 7 * DAY) return false;
+      if (g.city !== event.city || g.category !== event.category || Math.abs(Date.parse(g.publishedAt) - Date.parse(event.created_at)) > 7 * DAY) return false;
       const overlap = [...words].filter(w => g.words.has(w)).length;
       return overlap / new Set([...words, ...g.words]).size >= 0.65;
     });
     if (group) { group.articles++; group.links.push({ title: event.content, url: event.source_url, source: event.source }); }
-    else groups.push({ id: event.id, title: event.content, category: event.category, publishedAt: event.created_at, articles: 1, words, links: [{ title: event.content, url: event.source_url, source: event.source }] });
+    else groups.push({ id: event.id, title: event.content, category: event.category, city: event.city, publishedAt: event.created_at, articles: 1, words, links: [{ title: event.content, url: event.source_url, source: event.source }] });
   }
   return groups.map(({ words: _words, ...group }) => group);
 }

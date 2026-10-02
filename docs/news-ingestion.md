@@ -34,3 +34,15 @@ If the service credential is rotated, an owner must update the configured digest
 ## Verification
 
 `npm test` exercises parsing, time boundaries, exclusions, durable deduplication, concurrent leases, archive caching, failure preservation, authorization, coverage grouping and analytics. `npm run typecheck`, `npm run lint`, and `npm run build` validate the UI/build. Tests use synthetic fixtures; real collection results must be verified separately through the deployed writer and readback. No throughput or accuracy benchmark is claimed by these checks.
+
+## Tamil Nadu expansion — 2 October 2026
+
+The news monitor and citizen intake now support all 38 districts. A shared location catalog supplies district selectors and approximate headquarters markers. English and Tamil aliases in headlines (or the first three Mongabay paragraphs) identify district mentions. State-only and multi-district articles use the Tamil Nadu bucket; they are not pinned to a single district. Salem and Erode require Tamil Nadu context or a known India publisher, reducing obvious overseas and verb matches. This is conservative keyword matching, not geolocation or verified incident extraction. District assignment may miss towns or ambiguous place names.
+
+Mongabay collection now checks its latest 100 posts within 30 days, instead of searching only Chennai. This bounded sample is not exhaustive. GDELT checks the same bounded minute-file window across Tamil Nadu. The PIB Chennai regional office remains an official-release source; a denied request pauses it rather than bypassing the publisher. Other existing environmental/social connectors retain their displayed Chennai scope, and X remains paused.
+
+The Google project had Custom Search enabled and an existing full-web Programmable Search Engine. A newly created key was restricted to Custom Search and saved only as a hosted secret. One test returned HTTP 403: "This project does not have the access to Custom Search JSON API." Google collection is disabled. No paid reads or billing changes were made. The existing search engine was not modified. API enablement alone does not demonstrate grandfathered access. Google search results must not be treated as a freely storable ingestion feed; see https://support.google.com/programmable-search/answer/1714300 and https://developers.google.com/custom-search/v1/overview.
+
+The dashboard opens in Live mode unless mode=demo is explicitly requested. News stays unscored and retains original publication or indexing dates. Candidate grouping requires the same district bucket, topic and similar titles within seven days. The statewide news overview is labelled separately from the filtered signal feed.
+
+Validation: 37 automated tests passed, frontend type checking and production build passed. A direct current publisher check found one qualifying Cuddalore mangrove article, published 22 September; this is a real archived article, not evidence of a new incident today. The GitHub schedule is enabled, but only a manual run was visible when inspected; a configured schedule is not proof of an unattended run.

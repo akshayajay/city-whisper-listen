@@ -105,7 +105,7 @@ export default function ReportDialog({
           >
             <div className="form-grid">
               <label>
-                City
+                District
                 <select value={city} onChange={(e) => setCity(e.target.value)}>
                   {cities.map((c) => (
                     <option key={c}>{c}</option>

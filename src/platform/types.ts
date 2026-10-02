@@ -43,14 +43,9 @@ export interface Snapshot {
   serverTime: string;
   mode: Mode;
 }
-export const cities = [
-  "Chennai",
-  "Coimbatore",
-  "Madurai",
-  "Tiruchirappalli",
-  "Salem",
-  "Tirunelveli",
-];
+export { districts } from '../../worker/locations.js';
+import { districts } from '../../worker/locations.js';
+export const cities: string[] = districts.map(d => d.name);
 export const categories = [
   "Infrastructure",
   "Water",
